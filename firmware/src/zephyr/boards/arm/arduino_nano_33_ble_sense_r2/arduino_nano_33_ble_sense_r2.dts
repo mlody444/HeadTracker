@@ -76,13 +76,30 @@
   zephyr,concat-buf-size = <264>;
 //  clock-frequency = <100000>;
 };
-// we use SPI2 because SPI1/0 shares conflicts with I2C1/0
 &spi2 {
 	compatible = "nordic,nrf-spim";
 	status = "okay";
-	sck-pin = <13>; //P0.13
-	mosi-pin = <33>; //P1.01
-	miso-pin = <40>; //P1.08
+	sck-pin = <4>; //P0.04 A0
+    mosi-pin = <5>; //P0.05 A1
+    miso-pin = <27>; //P0.27 D9
+
+    ssd1306:ssd1306@0 {
+        compatible = "solomon,ssd1306fb";
+        reg = <0x0>;
+		spi-max-frequency = <8000000>;
+        label = "SSD1306";
+        height = <64>;
+        width  = <128>;
+        segment-offset  = <0>;
+        page-offset     = <0>;
+        display-offset  = <0>;
+        multiplex-ratio = <31>;
+        prechargep      = <0xD1>;
+        segment-remap;
+        com-invdir;
+        com-sequential;
+		data_cmd-gpios = <&gpio0 21 GPIO_ACTIVE_HIGH>;	//P0.21 D8
+    };
 };
 &gpio0 {
 	status = "okay";
