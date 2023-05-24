@@ -81,7 +81,8 @@
 	status = "okay";
 	sck-pin = <4>; //P0.04 A0
     mosi-pin = <5>; //P0.05 A1
-    miso-pin = <27>; //P0.27 D9
+    miso-pin = <34>; //P1.02 D10
+	cs-gpios = <&gpio0 30 GPIO_ACTIVE_LOW>; //P0.30 A2
 
     ssd1306:ssd1306@0 {
         compatible = "solomon,ssd1306fb";
@@ -93,12 +94,11 @@
         segment-offset  = <0>;
         page-offset     = <0>;
         display-offset  = <0>;
-        multiplex-ratio = <31>;
-        prechargep      = <0xD1>;
+        multiplex-ratio = <63>;
+        prechargep      = <0x22>;
         segment-remap;
-        com-invdir;
-        com-sequential;
 		data_cmd-gpios = <&gpio0 21 GPIO_ACTIVE_HIGH>;	//P0.21 D8
+		reset-gpios = <&gpio0 23 GPIO_ACTIVE_LOW>;		//p0.23 D7
     };
 };
 &gpio0 {
@@ -117,16 +117,16 @@ zephyr_udc0: &usbd {
 };
 // All PWM's should be enaled
 &pwm0 {
-	status = "okay";
+	status = "disabled";
 };
 &pwm1 {
-	status = "okay";
+	status = "disabled";
 };
 &pwm2 {
-	status = "okay";
+	status = "disabled";
 };
 &pwm3 {
-	status = "okay";
+	status = "disabled";
 };
 &rtc1 {
 	status = "disabled";
