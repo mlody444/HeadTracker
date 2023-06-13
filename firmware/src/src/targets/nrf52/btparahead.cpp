@@ -222,20 +222,21 @@ int8_t BTHeadGetRSSI()
 }
 
 typedef struct __attribute__((__packed__))  {
-    char name[10];
-    float tilt;
-    float pan;
-    uint16_t distance;
+    char name[4];
+    uint32_t tilt;
+    uint32_t pan;
+    uint32_t distance;
 } mydata_s;
 
 static ssize_t write_ct(struct bt_conn *conn, const struct bt_gatt_attr *attr, const void *buf, uint16_t len, uint16_t offset, uint8_t flags)
 {
   // Just got some data, here you could split it up back into a struct
   mydata_s incoming_friendly;
+  LOGI("Receive length = %d", len);
   if(len == sizeof(mydata_s)) {
     memcpy(&incoming_friendly, buf, len);
     // As first step it should be enough ;]
-    LOGI("Something was received, distance = %d", incoming_friendly.distance);
+    LOGI("Something was received, distance = %d, tilt = %d, pan = %d", incoming_friendly.distance, incoming_friendly.tilt, incoming_friendly.pan);
   }
 
   return len;
