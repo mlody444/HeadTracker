@@ -42,7 +42,7 @@
   }
 #endif
 
-#define D_S 6 // DIAMOND_SIZE
+#define P_S 6 // POINT_SIZE
 
 uint8_t oled_buf[1024] = {0};
 
@@ -167,12 +167,45 @@ void display_write_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1)
   }
 }
 
-void oled_draw_diamond(int16_t x, int y)
+void oled_draw_diamond(int16_t x, int16_t y)
 {
-  display_write_line(x - D_S, y      , x      , y + D_S);
-  display_write_line(x      , y + D_S, x + D_S, y      );
-  display_write_line(x + D_S, y      , x      , y - D_S);
-  display_write_line(x      , y - D_S, x - D_S, y      );
+  display_write_line(x - P_S, y      , x      , y + P_S);
+  display_write_line(x      , y + P_S, x + P_S, y      );
+  display_write_line(x + P_S, y      , x      , y - P_S);
+  display_write_line(x      , y - P_S, x - P_S, y      );
+}
+
+void oled_draw_square(int16_t x, int16_t y)
+{
+  display_write_line(x - P_S, y - P_S, x - P_S, y + P_S);
+  display_write_line(x - P_S, y + P_S, x + P_S, y + P_S);
+  display_write_line(x + P_S, y + P_S, x + P_S, y - P_S);
+  display_write_line(x + P_S, y - P_S, x - P_S, y - P_S);
+}
+
+void oled_draw_triangle(int16_t x, int16_t y)
+{
+  display_write_line(x + P_S, y + P_S, x      , y - P_S);
+  display_write_line(x      , y - P_S, x - P_S, y + P_S);
+  display_write_line(x + P_S, y + P_S, x - P_S, y + P_S);
+}
+
+void oled_draw_x_shape(int16_t x, int16_t y)
+{
+  display_write_line(x - P_S, y + P_S, x + P_S, y - P_S);
+  display_write_line(x - P_S, y - P_S, x + P_S, y + P_S);
+}
+
+void oled_update()
+{
+  display_write(oled, 0, 0, &buf_desc, oled_buf);
+}
+
+void oled_clean()
+{
+  for(uint16_t i = 0; i < 1024; i++) {
+    oled_buf[i] = 0;
+  }
 }
 
 void oled_init()
