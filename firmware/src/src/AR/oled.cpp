@@ -42,7 +42,7 @@
   }
 #endif
 
-#define P_S 6 // POINT_SIZE
+#define POINT_SIZE 6
 
 uint8_t oled_buf[1024] = {0};
 
@@ -169,31 +169,31 @@ void display_write_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1)
 
 void oled_draw_diamond(int16_t x, int16_t y)
 {
-  display_write_line(x - P_S, y      , x      , y + P_S);
-  display_write_line(x      , y + P_S, x + P_S, y      );
-  display_write_line(x + P_S, y      , x      , y - P_S);
-  display_write_line(x      , y - P_S, x - P_S, y      );
+  display_write_line(x - POINT_SIZE, y      , x      , y + POINT_SIZE);
+  display_write_line(x      , y + POINT_SIZE, x + POINT_SIZE, y      );
+  display_write_line(x + POINT_SIZE, y      , x      , y - POINT_SIZE);
+  display_write_line(x      , y - POINT_SIZE, x - POINT_SIZE, y      );
 }
 
 void oled_draw_square(int16_t x, int16_t y)
 {
-  display_write_line(x - P_S, y - P_S, x - P_S, y + P_S);
-  display_write_line(x - P_S, y + P_S, x + P_S, y + P_S);
-  display_write_line(x + P_S, y + P_S, x + P_S, y - P_S);
-  display_write_line(x + P_S, y - P_S, x - P_S, y - P_S);
+  display_write_line(x - POINT_SIZE, y - POINT_SIZE, x - POINT_SIZE, y + POINT_SIZE);
+  display_write_line(x - POINT_SIZE, y + POINT_SIZE, x + POINT_SIZE, y + POINT_SIZE);
+  display_write_line(x + POINT_SIZE, y + POINT_SIZE, x + POINT_SIZE, y - POINT_SIZE);
+  display_write_line(x + POINT_SIZE, y - POINT_SIZE, x - POINT_SIZE, y - POINT_SIZE);
 }
 
 void oled_draw_triangle(int16_t x, int16_t y)
 {
-  display_write_line(x + P_S, y + P_S, x      , y - P_S);
-  display_write_line(x      , y - P_S, x - P_S, y + P_S);
-  display_write_line(x + P_S, y + P_S, x - P_S, y + P_S);
+  display_write_line(x + POINT_SIZE, y + POINT_SIZE, x      , y - POINT_SIZE);
+  display_write_line(x      , y - POINT_SIZE, x - POINT_SIZE, y + POINT_SIZE);
+  display_write_line(x + POINT_SIZE, y + POINT_SIZE, x - POINT_SIZE, y + POINT_SIZE);
 }
 
 void oled_draw_x_shape(int16_t x, int16_t y)
 {
-  display_write_line(x - P_S, y + P_S, x + P_S, y - P_S);
-  display_write_line(x - P_S, y - P_S, x + P_S, y + P_S);
+  display_write_line(x - POINT_SIZE, y + POINT_SIZE, x + POINT_SIZE, y - POINT_SIZE);
+  display_write_line(x - POINT_SIZE, y - POINT_SIZE, x + POINT_SIZE, y + POINT_SIZE);
 }
 
 void oled_update()

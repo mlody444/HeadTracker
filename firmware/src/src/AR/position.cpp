@@ -81,9 +81,9 @@ void position_Thread()
 
   oled_clean();
   oled_draw_diamond(20, 20);
-  oled_draw_square(30, 30);
-  oled_draw_triangle(40, 40);
-  oled_draw_x_shape(50, 50);
+  oled_draw_square(30, 20);
+  oled_draw_triangle(40, 20);
+  oled_draw_x_shape(50, 20);
   oled_update();
 
   while (1) {
