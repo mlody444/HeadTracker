@@ -200,7 +200,6 @@ void oled_draw_x_shape(int16_t x, int16_t y)
 void oled_draw_circle(int16_t x0, int16_t y0)
  {
   int16_t r = POINT_HALF_SIZE;
-
   int16_t f = 1 - r;
   int16_t ddF_x = 1;
   int16_t ddF_y = -2 * r;
