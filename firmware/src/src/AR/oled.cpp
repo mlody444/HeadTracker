@@ -44,6 +44,8 @@
 
 #define POINT_SIZE 6
 #define POINT_HALF_SIZE ((int16_t) POINT_SIZE / 2)
+#define size 6
+#define half_size 3
 
 uint8_t oled_buf[1024] = {0};
 
@@ -230,6 +232,39 @@ void oled_draw_circle(int16_t x0, int16_t y0)
     oled_write_pixel(x0 + y, y0 - x);
     oled_write_pixel(x0 - y, y0 - x);
   }
+}
+
+void oled_write_N(int16_t x, int16_t y, uint8_t size)
+{
+  display_write_line(x            , y            , x            , y + size     );
+  display_write_line(x            , y +      size, x + half_size, y            );
+  display_write_line(x + half_size, y            , x            , y + size     );
+
+}
+
+void oled_write_E(int16_t x, int16_t y, uint8_t size)
+{
+  display_write_line(x            , y            , x            , y + size     );
+  display_write_line(x            , y + size     , x + size     , y            );
+  display_write_line(x            , y + half_size, x + size     , y + half_size);
+  display_write_line(x            , y            , x + size     , y            );
+}
+
+void oled_write_S(int16_t x, int16_t y, uint8_t size)
+{
+  display_write_line(x            , y            , x + size     , y            );
+  display_write_line(x + size     , y            , x + size     , y + half_size);
+  display_write_line(x            , y + half_size, x + size     , y + half_size);
+  display_write_line(x            , y + half_size, x            , y + size     );
+  display_write_line(x            , y + size     , x + size     , y + size     );
+}
+
+void oled_write_W(int16_t x, int16_t y, uint8_t size)
+{
+  display_write_line(x            , y            , x            , y + half_size);
+  display_write_line(x            , y            , x + half_size, y + half_size);
+  display_write_line(x + half_size, y + half_size, x + size     , y            );
+  display_write_line(x + size     , y            , x + size     , y + size     );
 }
 
 void oled_update()
