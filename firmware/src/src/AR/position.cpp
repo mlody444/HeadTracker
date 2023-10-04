@@ -170,6 +170,7 @@ static void process_point(struct Head_Track_T head, struct Position_Data_T posit
   switch(position.point_type) {
   case DIAMOND:
     oled_draw_diamond(point.x, point.y);
+    oled_write_char(point.x + 7, point.y, 'A');
     break;
   case SQUARE:
     oled_draw_square(point.x, point.y);

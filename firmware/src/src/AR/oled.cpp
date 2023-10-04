@@ -62,22 +62,20 @@ const struct display_buffer_descriptor buf_desc = {
 
 uint8_t buf[1024] = {0};
 
-// static void display_update();
+static uint8_t count_spaces(char* text, uint8_t size);
 
-// static int display_update()
-// {
-//   struct display_driver_api *api = (struct display_driver_api *)display->api;
+static uint8_t count_spaces(char* text, uint8_t size)
+{
+  uint8_t spaces = 0;
+  uint8_t i = 0;
 
-// 	return api->write(display, 0, 0, buf_desc, buf);
-// }
+  for (i = 0; i < size; i++) {
+    if (text[i] == ' ')
+      spaces++;
+  }
 
-// static inline int display_set_contrast(const struct device *dev, uint8_t contrast)
-// {
-// 	struct display_driver_api *api =
-// 		(struct display_driver_api *)dev->api;
-
-// 	return api->set_contrast(dev, contrast);
-// }
+  return spaces;
+}
 
 void oled_write_pixel(int16_t x, int16_t y)
 {
@@ -166,6 +164,82 @@ void oled_write_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1)
       y0 += ystep;
       err += dx;
     }
+  }
+}
+
+uint8_t oled_font_size = 8;
+uint8_t oled_font_width = 5;
+enum TEXT_ALIGNMENT oled_font_alignment;
+
+void oled_set_font(uint8_t font_size, enum TEXT_ALIGNMENT alignment)
+{
+  if (font_size == 8 || // font max size should be 16
+      font_size == 8) {
+    oled_font_size = font_size;
+  } else {
+    oled_font_size = 8;
+  }
+
+  if (alignment >= TEXT_ALIGNMENT_MAX)
+    oled_font_alignment = LEFT;
+  else
+    oled_font_alignment = alignment;
+}
+
+uint16_t a_char[5] = {0x7F, 0xA0, 0xA0, 0xA0, 0x7F};
+
+void oled_write_char(int16_t x, int16_t y, char letter)
+{
+  uint8_t i = 0;
+  uint8_t buf_start = y / 8;
+
+  uint16_t y_pos;
+  uint8_t y_start = (63 - y) / 8;
+  uint8_t y_end = y_start + ((oled_font_size + 7) / 2); // here is mistake
+  uint8_t y_offset = y % 8;
+  uint8_t y_mask;
+
+  for (i = 0; i < oled_font_width; i++) {
+    if (x < 0)
+      continue;
+    if (x >= WIDTH)
+      break;
+
+    y_pos = x + y_start * WIDTH;
+    oled_buf[y_pos] = 0xFF;
+    oled_buf[y_pos+128] = 0xE7;
+    y_pos = x + y_start * WIDTH;
+    oled_buf[y_pos] = 0xFF;
+    y_pos = x + y_end * WIDTH;
+    oled_buf[y_pos] |= 0x99;
+    while(y_pos <= y_end) {
+      if (y_pos == y_start) {
+        y_mask = ((uint8_t)(a_char[i] << y_offset));
+      } else if (y_pos == y_end) {
+        y_mask = ((uint8_t)(a_char[i] >> (8-y_offset)));
+      } else {
+        // TBD - right now only 8 pix font used
+      }
+
+      oled_buf[5] = 0xFF;
+      oled_buf[6] = 0x0;
+
+      y_pos += WIDTH;
+    }
+
+    x++;
+  }
+}
+
+
+void oled_write_text(int16_t x, int16_t y, char* text, uint8_t text_size)
+{
+  uint8_t spaces = count_spaces(text, text_size);
+
+  uint8_t i, j;
+
+  for (i = 0; i < 3; i++) {
+
   }
 }
 
@@ -311,6 +385,13 @@ void oled_init()
   oled_write_line(0,0,0,63);
   oled_write_line(127,0,127,63);
   oled_write_line(0,63,127,63);
+
+  oled_buf[150] = 0xFE;
+  oled_buf[151] = 0x05;
+  oled_buf[152] = 0x05;
+  oled_buf[153] = 0x05;
+  oled_buf[154] = 0xFE;
+
   display_write(oled, 0, 0, &buf_desc, oled_buf);
   rt_sleep_ms(5000);
 }
