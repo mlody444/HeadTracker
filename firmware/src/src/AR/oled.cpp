@@ -186,45 +186,51 @@ void oled_set_font(uint8_t font_size, enum TEXT_ALIGNMENT alignment)
     oled_font_alignment = alignment;
 }
 
-uint16_t a_char[5] = {0x7F, 0xA0, 0xA0, 0xA0, 0x7F};
+uint16_t a_char[5] = {0xFE, 0x05, 0x05, 0x05, 0xFE};
 
 void oled_write_char(int16_t x, int16_t y, char letter)
 {
   uint8_t i = 0;
-  uint8_t buf_start = y / 8;
 
-  uint16_t y_pos;
-  uint8_t y_start = (63 - y) / 8;
-  uint8_t y_end = y_start + ((oled_font_size + 7) / 2); // here is mistake
-  uint8_t y_offset = y % 8;
-  uint8_t y_mask;
+  int16_t buf_pos;
+  int16_t pos;
+  int16_t pos_start = (63 - y) / 8;
+  if (y > 63)
+    pos_start--;
+  int16_t pos_end = pos_start + ((oled_font_size + 7) / 8); // here is mistake
+  int16_t pos_offset = y % 8;
+  int16_t pos_mask;
+
+  buf_pos = x + pos * WIDTH;
+  LOGI("pos = %d, pos_start = %d, pos_end = %d, x = %d, y = %d, buf_pos = %d", pos, pos_start, pos_end, x, y, buf_pos);
 
   for (i = 0; i < oled_font_width; i++) {
-    if (x < 0)
+    if (x < 0) {
+      x++;
       continue;
+    }
     if (x >= WIDTH)
       break;
 
-    y_pos = x + y_start * WIDTH;
-    oled_buf[y_pos] = 0xFF;
-    oled_buf[y_pos+128] = 0xE7;
-    y_pos = x + y_start * WIDTH;
-    oled_buf[y_pos] = 0xFF;
-    y_pos = x + y_end * WIDTH;
-    oled_buf[y_pos] |= 0x99;
-    while(y_pos <= y_end) {
-      if (y_pos == y_start) {
-        y_mask = ((uint8_t)(a_char[i] << y_offset));
-      } else if (y_pos == y_end) {
-        y_mask = ((uint8_t)(a_char[i] >> (8-y_offset)));
+    pos = pos_start;
+    LOGI("pos = %d, pos_start = %d, pos_end = %d, x = %d, y = %d, buf_pos = %d", pos, pos_start, pos_end, x, y, buf_pos);
+    while(pos <= pos_end) { //process single pixel row in Y column
+      if (pos == pos_start) {
+        pos_mask = ((uint8_t)(a_char[i] << (8 - pos_offset)));
+      } else if (pos == pos_end) {
+        pos_mask = ((uint8_t)(a_char[i] >> pos_offset));
       } else {
         // TBD - right now only 8 pix font used
       }
 
-      oled_buf[5] = 0xFF;
-      oled_buf[6] = 0x0;
+      buf_pos = x + pos * WIDTH;
+      if (buf_pos < 0 || buf_pos >= 1024) {
+        LOGI("pos = %d, pos_start = %d, pos_end = %d, x = %d, y = %d, buf_pos = %d", pos, pos_start, pos_end, x, y, buf_pos);
+      } else {
+        oled_buf[buf_pos] |= pos_mask;
+      }
 
-      y_pos += WIDTH;
+      pos++;
     }
 
     x++;
@@ -385,12 +391,6 @@ void oled_init()
   oled_write_line(0,0,0,63);
   oled_write_line(127,0,127,63);
   oled_write_line(0,63,127,63);
-
-  oled_buf[150] = 0xFE;
-  oled_buf[151] = 0x05;
-  oled_buf[152] = 0x05;
-  oled_buf[153] = 0x05;
-  oled_buf[154] = 0xFE;
 
   display_write(oled, 0, 0, &buf_desc, oled_buf);
   rt_sleep_ms(5000);
