@@ -14,7 +14,7 @@ enum TEXT_ALIGNMENT {
 };
 
 void oled_set_font(uint8_t font_size, enum TEXT_ALIGNMENT alignment);
-void oled_write_char(int16_t x, int16_t y, char letter);
+void oled_write_char(int16_t x, int16_t y, char letter, uint8_t font_size);
 void oled_write_text(int16_t x, int16_t y, char* text, uint8_t text_size);
 
 void oled_init();

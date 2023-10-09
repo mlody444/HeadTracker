@@ -170,19 +170,24 @@ static void process_point(struct Head_Track_T head, struct Position_Data_T posit
   switch(position.point_type) {
   case DIAMOND:
     oled_draw_diamond(point.x, point.y);
-    oled_write_char(point.x - 7, point.y, 'A');
+    oled_write_text(point.x - 7, point.y-5, "KUD", 5);
+    oled_write_text(point.x - 7, point.y-11, "103", 5);
     break;
   case SQUARE:
     oled_draw_square(point.x, point.y);
     break;
   case TRIANGLE:
     oled_draw_triangle(point.x, point.y);
+    oled_write_text(point.x - 4, point.y-5, "HQ", 5);
+    oled_write_text(point.x - 7, point.y-11, "4.7", 5);
     break;
   case X_SHAPE:
     oled_draw_x_shape(point.x, point.y);
     break;
   case CIRCLE:
     oled_draw_circle(point.x, point.y);
+    oled_write_text(point.x - 16, point.y-5, "RANGER", 5);
+    oled_write_text(point.x - 7, point.y-11, "451", 5);
     break;
   default:
     oled_draw_square(point.x, point.y);

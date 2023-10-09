@@ -168,7 +168,7 @@ void oled_write_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1)
 }
 
 uint8_t oled_font_size = 8;
-uint8_t oled_font_width = 5;
+uint8_t oled_font_width = 4;
 enum TEXT_ALIGNMENT oled_font_alignment;
 
 void oled_set_font(uint8_t font_size, enum TEXT_ALIGNMENT alignment)
@@ -187,23 +187,45 @@ void oled_set_font(uint8_t font_size, enum TEXT_ALIGNMENT alignment)
 }
 
 uint16_t a_char[5] = {0xFE, 0x05, 0x05, 0x05, 0xFE};
-
-void oled_write_char(int16_t x, int16_t y, char letter)
+extern const uint16_t *pix5[];
+static const uint16_t **get_font_param(uint8_t height, uint8_t *width)
 {
+  const uint16_t **font;
+
+  switch (height) {
+  case 5:
+    if (width != nullptr)
+      *width = 4;
+    font = pix5;
+    break;
+  default:
+    if (width != nullptr)
+      *width = 4;
+    font = pix5;
+    break;
+  }
+
+  return font;
+}
+
+void oled_write_char(int16_t x, int16_t y, char letter, uint8_t font_size)
+{
+  int16_t y_buf_start = 7 - (y / 8);
+  int16_t y_buf_offset = y % 8;
+  const uint16_t *x_char;
+  const uint16_t **font;
+  int16_t y_buf_mask;
+  int16_t y_buf_end;
+  int16_t buf_index;
+  int16_t y_cur_pos;
   uint8_t i = 0;
 
-  int16_t buf_pos;
-  int16_t pos;
-  int16_t pos_start = (63 - y) / 8;
-  if (y > 63)
-    pos_start--;
-  int16_t pos_end = pos_start + ((oled_font_size + 7) / 8); // here is mistake
-  int16_t pos_offset = y % 8;
-  int16_t pos_mask;
+  font = get_font_param(font_size, nullptr);
+  x_char = font[letter - 0x20];
 
-  buf_pos = x + pos * WIDTH;
-  LOGI("pos = %d, pos_start = %d, pos_end = %d, x = %d, y = %d, buf_pos = %d", pos, pos_start, pos_end, x, y, buf_pos);
+  y_buf_end = y_buf_start + ((oled_font_size + 7) / 8);
 
+/* process multiple Y column of pixels to display char*/
   for (i = 0; i < oled_font_width; i++) {
     if (x < 0) {
       x++;
@@ -212,25 +234,25 @@ void oled_write_char(int16_t x, int16_t y, char letter)
     if (x >= WIDTH)
       break;
 
-    pos = pos_start;
-    LOGI("pos = %d, pos_start = %d, pos_end = %d, x = %d, y = %d, buf_pos = %d", pos, pos_start, pos_end, x, y, buf_pos);
-    while(pos <= pos_end) { //process single pixel row in Y column
-      if (pos == pos_start) {
-        pos_mask = ((uint8_t)(a_char[i] << (8 - pos_offset)));
-      } else if (pos == pos_end) {
-        pos_mask = ((uint8_t)(a_char[i] >> pos_offset));
+    y_cur_pos = y_buf_start;
+/* process single Y column of pixels */
+    while(y_cur_pos <= y_buf_end) {
+      if (y_cur_pos == y_buf_start) {
+        y_buf_mask = ((uint8_t)(x_char[i] << (8 - y_buf_offset)));
+      } else if (y_cur_pos == y_buf_end) {
+        y_buf_mask = ((uint8_t)(x_char[i] >> y_buf_offset));
       } else {
         // TBD - right now only 8 pix font used
       }
 
-      buf_pos = x + pos * WIDTH;
-      if (buf_pos < 0 || buf_pos >= 1024) {
-        LOGI("pos = %d, pos_start = %d, pos_end = %d, x = %d, y = %d, buf_pos = %d", pos, pos_start, pos_end, x, y, buf_pos);
+      buf_index = x + y_cur_pos * WIDTH;
+      if (buf_index < 0 || buf_index >= 1024) {
+        LOGI("y_cur_pos = %d, y_buf_start = %d, y_buf_end = %d, x = %d, y = %d, buf_index = %d", y_cur_pos, y_buf_start, y_buf_end, x, y, buf_index);
       } else {
-        oled_buf[buf_pos] |= pos_mask;
+        oled_buf[buf_index] |= y_buf_mask;
       }
 
-      pos++;
+      y_cur_pos++;
     }
 
     x++;
@@ -242,10 +264,15 @@ void oled_write_text(int16_t x, int16_t y, char* text, uint8_t text_size)
 {
   uint8_t spaces = count_spaces(text, text_size);
 
+  const uint16_t **font;
+  uint8_t width;
+  font = get_font_param(text_size, &width);
   uint8_t i, j;
 
-  for (i = 0; i < 3; i++) {
-
+  while (*text != NULL) {
+    oled_write_char(x, y, *text, text_size);
+    x += 1 + width;
+    text++;
   }
 }
 
