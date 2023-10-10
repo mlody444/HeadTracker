@@ -26,13 +26,16 @@
 #include <stdint.h>
 #include <math.h>
 
+#include <string.h> // temporary for strlen ONLY
+#include <stdlib.h> // utoa ONLY
+
 #include "position.h"
 #include "log.h"
 #include "oled.h"
 
 #define POINTS_MAX 32
 
-#define POS_TOL 30 // TBD - it's probably to high value
+#define POS_TOL 40 // TBD - it's probably to high value
 #define FOV_CALIBRATION 5.0
 
 #define ROLL_ADJUST 1
@@ -163,6 +166,61 @@ static struct Point_T calculate_cordinates(struct Head_Track_T head, float azimu
   return point;
 }
 
+static void distance_to_text(uint32_t distance, char *buf, uint8_t size)
+{
+  uint32_t x;
+  if (size < 4) {
+    return;
+  }
+
+  if (distance >= 10000) {
+    buf[0] = '9';
+    buf[1] = '.';
+    buf[2] = '9';
+    buf[3] = 0;
+    return;
+  }
+
+  if (distance >= 1000) {
+    x = distance / 1000;
+    buf[0] = x + '0';
+    buf[1] = '.';
+    distance -= x * 1000;
+    buf[2] = (distance / 100) + '0';
+    buf[3] = 0;
+    return;
+  }
+
+  if (distance >= 100) {
+    x = distance / 100;
+    buf[0] = x + '0';
+    distance -= x * 100;
+    x = distance / 10;
+    buf[1] = x + '0';
+    distance -= x * 10;
+    x = distance;
+    buf[2] = x + '0';
+    buf[3] = 0;
+    return;
+  }
+
+  if (distance >= 10) {
+    x = distance / 10;
+    buf[0] = x + '0';
+    distance -= x * 10;
+    x = distance;
+    buf[1] = x + '0';
+    buf[2] = 0;
+    return;
+  }
+
+  if (distance >= 1) {
+    buf[0] = distance + '0';
+    buf[1] = 0;
+    return;
+  }
+}
+
 static void process_point(struct Head_Track_T head, struct Position_Data_T position, bool adjust_roll)
 {
   struct Point_T point = calculate_cordinates(head, position.azimuth, position.pitch, adjust_roll);
@@ -170,30 +228,35 @@ static void process_point(struct Head_Track_T head, struct Position_Data_T posit
   switch(position.point_type) {
   case DIAMOND:
     oled_draw_diamond(point.x, point.y);
-    oled_write_text(point.x - 7, point.y-5, "KUD", 5);
-    oled_write_text(point.x - 7, point.y-11, "103", 5);
+    // oled_write_text(point.x - 7, point.y-11, "103", true);
     break;
   case SQUARE:
     oled_draw_square(point.x, point.y);
     break;
   case TRIANGLE:
     oled_draw_triangle(point.x, point.y);
-    oled_write_text(point.x - 4, point.y-5, "HQ", 5);
-    oled_write_text(point.x - 7, point.y-11, "4.7", 5);
+    // oled_write_text(point.x - 7, point.y-11, "4.7", false);
     break;
   case X_SHAPE:
     oled_draw_x_shape(point.x, point.y);
     break;
   case CIRCLE:
     oled_draw_circle(point.x, point.y);
-    oled_write_text(point.x - 16, point.y-5, "RANGER", 5);
-    oled_write_text(point.x - 7, point.y-11, "451", 5);
+    // oled_write_text(point.x - 7, point.y-11, "451", false);
     break;
   default:
     oled_draw_square(point.x, point.y);
     oled_draw_x_shape(point.x, point.y);
     break;
   }
+  // position.name[0] = 'R';
+  // position.name[1] = 'O';
+  // oled_write_char(point.x-3, point.y-5, position.name[0], 5);
+  // oled_write_char(point.x+3, point.y-5, position.name[1], 5);
+  oled_write_text(point.x, point.y-5, position.name, true);
+  char number[4] = {0};
+  distance_to_text(position.distance, number, sizeof(number));
+  oled_write_text(point.x, point.y-11, number, true);
 }
 
 static void process_all_points(struct Head_Track_T head, struct Position_Data_T positions[], uint32_t size, bool adjust_roll)
@@ -306,6 +369,18 @@ void position_add_point(struct Position_Data_T point_data)
   }
 }
 
+static void set_point_name(struct Position_Data_T *point, const char* name)
+{
+  uint8_t length = strlen(name);
+  if (length >= 15) {
+    length = 15;
+  }
+
+  point->name[length] = 0;
+
+  memcpy(point->name, name, length);
+}
+
 void position_Thread()
 {
 /* waiting until log functions initialize */
@@ -318,81 +393,103 @@ void position_Thread()
   struct Position_Data_T point_data;
   point_data.azimuth = 359.0;
   point_data.pitch = 10.0;
-  point_data.distance = 100;
-  point_data.name[0] = 'T';
-  point_data.name[1] = 'e';
-  point_data.name[2] = 's';
-  point_data.name[3] = 't';
-  point_data.name[4] = '0';
-  point_data.name[5] = 0;
+  point_data.distance = 23;
+  set_point_name(&point_data, "Roman");
   point_data.point_type = DIAMOND;
   position_add_point(point_data);
 
   point_data.azimuth = 5.0;
-  point_data.pitch = -5.0;
-  point_data.name[4] = '1';
-  point_data.point_type = SQUARE;
-  position_add_point(point_data);
-
-  point_data.azimuth = 40.0;
-  point_data.pitch = 15.0;
-  point_data.name[4] = '2';
-  point_data.point_type = SQUARE;
-  position_add_point(point_data);
-
-  point_data.azimuth = 110.0;
-  point_data.pitch = 0.0;
-  point_data.name[4] = '3';
-  point_data.point_type = TRIANGLE;
-  position_add_point(point_data);
-
-  point_data.azimuth = 105.0;
-  point_data.pitch = 2.0;
-  point_data.name[4] = '4';
-  point_data.point_type = X_SHAPE;
-  position_add_point(point_data);
-
-  point_data.azimuth = 170;
-  point_data.pitch = 8;
-  point_data.name[4] = '5';
+  point_data.pitch = 5.0;
+  point_data.distance = 12;
+  set_point_name(&point_data, "Seria");
   point_data.point_type = DIAMOND;
   position_add_point(point_data);
 
-  point_data.azimuth = 230.0;
-  point_data.pitch = -12.0;
-  point_data.name[4] = '6';
-  point_data.point_type = SQUARE;
-  position_add_point(point_data);
-
-  point_data.azimuth = 230.0;
+  point_data.azimuth = 30.0;
   point_data.pitch = 6.0;
-  point_data.name[4] = '7';
-  point_data.point_type = TRIANGLE;
+  point_data.distance = 83;
+  set_point_name(&point_data, "Oleq");
+  point_data.point_type = DIAMOND;
+
+  position_add_point(point_data);
+  point_data.azimuth = 33.0;
+  point_data.pitch = 10.0;
+  point_data.distance = 102;
+  set_point_name(&point_data, "Marko");
+  point_data.point_type = DIAMOND;
   position_add_point(point_data);
 
-  point_data.azimuth = 300.0;
-  point_data.pitch = -4.0;
-  point_data.name[4] = '8';
+  position_add_point(point_data);
+  point_data.azimuth = 350.0;
+  point_data.pitch = 6.0;
+  point_data.distance = 47;
+  set_point_name(&point_data, "Malpa");
+  point_data.point_type = DIAMOND;
+  position_add_point(point_data);
+
+  position_add_point(point_data);
+  point_data.azimuth = 345.0;
+  point_data.pitch = 5.0;
+  point_data.distance = 60;
+  set_point_name(&point_data, "RANGER");
   point_data.point_type = SQUARE;
   position_add_point(point_data);
 
-  point_data.azimuth = 345.0;
-  point_data.pitch = 8.0;
-  point_data.name[4] = '9';
+  position_add_point(point_data);
+  point_data.azimuth = 310.0;
+  point_data.pitch = 5.0;
+  point_data.distance = 2460;
+  set_point_name(&point_data, "HQ");
   point_data.point_type = TRIANGLE;
   position_add_point(point_data);
 
-  point_data.azimuth = 350.0;
-  point_data.pitch = 2.0;
-  point_data.name[4] = 'A';
-  point_data.point_type = CIRCLE;
-  position_add_point(point_data);
+  // point_data.azimuth = 105.0;
+  // point_data.pitch = 2.0;
+  // point_data.name[4] = '4';
+  // point_data.point_type = X_SHAPE;
+  // position_add_point(point_data);
 
-  point_data.azimuth = 358.0;
-  point_data.pitch = -3.0;
-  point_data.name[4] = 'B';
-  point_data.point_type = DIAMOND;
-  position_add_point(point_data);
+  // point_data.azimuth = 170;
+  // point_data.pitch = 8;
+  // point_data.name[4] = '5';
+  // point_data.point_type = DIAMOND;
+  // position_add_point(point_data);
+
+  // point_data.azimuth = 230.0;
+  // point_data.pitch = -12.0;
+  // point_data.name[4] = '6';
+  // point_data.point_type = SQUARE;
+  // position_add_point(point_data);
+
+  // point_data.azimuth = 230.0;
+  // point_data.pitch = 6.0;
+  // point_data.name[4] = '7';
+  // point_data.point_type = TRIANGLE;
+  // position_add_point(point_data);
+
+  // point_data.azimuth = 300.0;
+  // point_data.pitch = -4.0;
+  // point_data.name[4] = '8';
+  // point_data.point_type = SQUARE;
+  // position_add_point(point_data);
+
+  // point_data.azimuth = 345.0;
+  // point_data.pitch = 8.0;
+  // point_data.name[4] = '9';
+  // point_data.point_type = TRIANGLE;
+  // position_add_point(point_data);
+
+  // point_data.azimuth = 350.0;
+  // point_data.pitch = 2.0;
+  // point_data.name[4] = 'A';
+  // point_data.point_type = CIRCLE;
+  // position_add_point(point_data);
+
+  // point_data.azimuth = 358.0;
+  // point_data.pitch = -3.0;
+  // point_data.name[4] = 'B';
+  // point_data.point_type = DIAMOND;
+  // position_add_point(point_data);
 
   while (1) {
     oled_clean();

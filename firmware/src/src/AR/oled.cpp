@@ -260,14 +260,21 @@ void oled_write_char(int16_t x, int16_t y, char letter, uint8_t font_size)
 }
 
 
-void oled_write_text(int16_t x, int16_t y, char* text, uint8_t text_size)
+void oled_write_text(int16_t x, int16_t y, char* text, bool center)
 {
+  uint8_t text_size = strlen(text);
   uint8_t spaces = count_spaces(text, text_size);
+
+  uint8_t x_shift = 0;
 
   const uint16_t **font;
   uint8_t width;
   font = get_font_param(text_size, &width);
   uint8_t i, j;
+
+  if (center) {
+    x -= (text_size * width + text_size - 1) / 2;
+  }
 
   while (*text != NULL) {
     oled_write_char(x, y, *text, text_size);
