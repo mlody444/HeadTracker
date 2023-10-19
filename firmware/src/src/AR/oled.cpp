@@ -188,24 +188,36 @@ void oled_set_font(uint8_t font_size, enum TEXT_ALIGNMENT alignment)
 
 uint16_t a_char[5] = {0xFE, 0x05, 0x05, 0x05, 0xFE};
 extern const uint16_t *pix5[];
-static const uint16_t **get_font_param(uint8_t height, uint8_t *width)
+extern const uint16_t *const* test_pix5;
+extern const uint16_t *const* just_testing;
+extern const uint16_t *const* pix7;
+
+static const uint16_t *const*get_font_param(uint8_t height, uint8_t *width)
 {
   const uint16_t **font;
+  const uint16_t *const*test_font;
 
   switch (height) {
   case 5:
     if (width != nullptr)
       *width = 4;
     font = pix5;
+    test_font = just_testing;
+    break;
+  case 7:
+    if (width != nullptr)
+      *width = 4;
+    font = pix7;
     break;
   default:
     if (width != nullptr)
       *width = 4;
     font = pix5;
+    test_font = just_testing;
     break;
   }
 
-  return font;
+  return test_font;
 }
 
 void oled_write_char(int16_t x, int16_t y, char letter, uint8_t font_size)
@@ -213,7 +225,7 @@ void oled_write_char(int16_t x, int16_t y, char letter, uint8_t font_size)
   int16_t y_buf_start = 7 - (y / 8);
   int16_t y_buf_offset = y % 8;
   const uint16_t *x_char;
-  const uint16_t **font;
+  const uint16_t *const*font;
   int16_t y_buf_mask;
   int16_t y_buf_end;
   int16_t buf_index;
@@ -260,20 +272,20 @@ void oled_write_char(int16_t x, int16_t y, char letter, uint8_t font_size)
 }
 
 
-void oled_write_text(int16_t x, int16_t y, char* text, bool center)
+void oled_write_text(int16_t x, int16_t y, char* text, uint8_t text_size, bool center)
 {
-  uint8_t text_size = strlen(text);
+  uint8_t text_length = strlen(text);
   uint8_t spaces = count_spaces(text, text_size);
 
   uint8_t x_shift = 0;
 
-  const uint16_t **font;
+  const uint16_t *const*font;
   uint8_t width;
   font = get_font_param(text_size, &width);
   uint8_t i, j;
 
   if (center) {
-    x -= (text_size * width + text_size - 1) / 2;
+    x -= (text_length * width + text_length - 1) / 2;
   }
 
   while (*text != NULL) {

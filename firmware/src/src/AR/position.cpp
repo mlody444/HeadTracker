@@ -41,7 +41,7 @@
 #define ROLL_ADJUST 1
 #define ROLL_IGNORE 0
 
-#define COMPASS_ELEMENTS      16    // TBD maybe more elements would be helpfull?
+#define COMPASS_ELEMENTS      24    // TBD maybe more elements would be helpfull?
 #define COMPASS_PITCH         21.0
 #define COMPASS_PITCH_ZERO    COMPASS_PITCH + 1.5
 #define COMPASS_PITCH_SHORT   COMPASS_PITCH + 3.0
@@ -75,21 +75,29 @@ struct Point_T {
 
 struct Compass_Data_T compass_array[COMPASS_ELEMENTS] = {
     {0.0,   true, 'N', 0},
-    {22.5,  false, 0, 0},
+    {15.0,  false, 0, 0},
+    {30.0,  false, 0, 0},
     {45.0,  false, 'N', 'E'},
-    {67.5,  false, 0, 0},
+    {60.0,  false, 0, 0},
+    {75.0,  false, 0, 0},
     {90.0,  true,  'E', 0},
-    {112.5, false, 0, 0},
+    {105.0, false, 0, 0},
+    {120.0, false, 0, 0},
     {135.0, false, 'E', 'S'},
-    {157.5, false, 0, 0},
+    {150.0, false, 0, 0},
+    {165.0, false, 0, 0},
     {180.0, true,  'S', 0},
-    {202.5, false, 0, 0},
+    {195.0, false, 0, 0},
+    {210.0, false, 0, 0},
     {225.0, false, 'S', 'W'},
-    {247.5, false, 0, 0},
+    {240.0, false, 0, 0},
+    {255.0, false, 0, 0},
     {270.0, true,  'W', 0},
-    {292.5, false, 0, 0},
+    {285.0, false, 0, 0},
+    {300.0, false, 0, 0},
     {315.0, false, 'W', 'N'},
-    {337.5, false, 0, 0}
+    {330.0, false, 0, 0},
+    {345.0, false, 0, 0}
 };
 
 struct Position_Data_T positions_memory[POINTS_MAX];
@@ -253,10 +261,11 @@ static void process_point(struct Head_Track_T head, struct Position_Data_T posit
   // position.name[1] = 'O';
   // oled_write_char(point.x-3, point.y-5, position.name[0], 5);
   // oled_write_char(point.x+3, point.y-5, position.name[1], 5);
-  oled_write_text(point.x, point.y-5, position.name, true);
+  oled_write_text(point.x, point.y-5, position.name, 5, true);
   char number[4] = {0};
   distance_to_text(position.distance, number, sizeof(number));
-  oled_write_text(point.x, point.y-11, number, true);
+  // oled_write_text(point.x, point.y-11, number, true);
+  oled_write_text(point.x, point.y-11, position.name, 7, true);
 }
 
 static void process_all_points(struct Head_Track_T head, struct Position_Data_T positions[], uint32_t size, bool adjust_roll)
@@ -423,7 +432,7 @@ void position_Thread()
   point_data.azimuth = 350.0;
   point_data.pitch = 6.0;
   point_data.distance = 47;
-  set_point_name(&point_data, "Malpa");
+  set_point_name(&point_data, "Eugein");
   point_data.point_type = DIAMOND;
   position_add_point(point_data);
 
