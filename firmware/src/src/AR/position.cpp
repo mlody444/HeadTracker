@@ -265,7 +265,7 @@ static void process_point(struct Head_Track_T head, struct Position_Data_T posit
   char number[4] = {0};
   distance_to_text(position.distance, number, sizeof(number));
   // oled_write_text(point.x, point.y-11, number, true);
-  oled_write_text(point.x, point.y-11, position.name, 7, true);
+  oled_write_text(point.x, point.y-11, position.name, 14, true);
 }
 
 static void process_all_points(struct Head_Track_T head, struct Position_Data_T positions[], uint32_t size, bool adjust_roll)
@@ -396,7 +396,7 @@ void position_Thread()
   // rt_sleep_ms(3000);
   LOGI("Position thread started");
 
-  oled_init();
+  oled_init(100);
 
 /* generate initial points to be displayed */
   struct Position_Data_T point_data;
@@ -500,6 +500,8 @@ void position_Thread()
   // point_data.point_type = DIAMOND;
   // position_add_point(point_data);
 
+  int16_t y = 0;
+
   while (1) {
     oled_clean();
 
@@ -510,5 +512,26 @@ void position_Thread()
 
     oled_update();
     rt_sleep_ms(25);
+
+    // oled_clean();
+    // oled_write_line(100, 0,  127, 0);
+    // oled_write_line(100, 8,  127, 8);
+    // oled_write_line(100, 16, 127, 16);
+    // oled_write_line(100, 24, 127, 24);
+    // oled_write_line(100, 32, 127, 32);
+    // oled_write_line(100, 40, 127, 40);
+    // oled_write_line(100, 48, 127, 48);
+    // oled_write_line(100, 56, 127, 56);
+
+    // oled_write_text(64, y, "T", 14, true);
+
+    // oled_write_line(0, y, 20, y);
+    // y++;
+    // if (y == 64) {
+    //   y = 0;
+    // }
+
+    // oled_update();
+    // rt_sleep_ms(250);
   }
 }
