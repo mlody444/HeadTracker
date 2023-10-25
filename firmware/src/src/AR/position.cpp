@@ -53,8 +53,8 @@
 
 struct Compass_Data_T {
   float azimuth;
-  bool large;
-  char text[2];
+  uint8_t font_size;
+  char text[4];
 };
 
 struct Head_Track_T {
@@ -74,30 +74,30 @@ struct Point_T {
 };
 
 struct Compass_Data_T compass_array[COMPASS_ELEMENTS] = {
-    {0.0,   true, 'N', 0},
-    {15.0,  false, 0, 0},
-    {30.0,  false, 0, 0},
-    {45.0,  false, 'N', 'E'},
-    {60.0,  false, 0, 0},
-    {75.0,  false, 0, 0},
-    {90.0,  true,  'E', 0},
-    {105.0, false, 0, 0},
-    {120.0, false, 0, 0},
-    {135.0, false, 'E', 'S'},
-    {150.0, false, 0, 0},
-    {165.0, false, 0, 0},
-    {180.0, true,  'S', 0},
-    {195.0, false, 0, 0},
-    {210.0, false, 0, 0},
-    {225.0, false, 'S', 'W'},
-    {240.0, false, 0, 0},
-    {255.0, false, 0, 0},
-    {270.0, true,  'W', 0},
-    {285.0, false, 0, 0},
-    {300.0, false, 0, 0},
-    {315.0, false, 'W', 'N'},
-    {330.0, false, 0, 0},
-    {345.0, false, 0, 0}
+    {0.0,   14, 'N',  0,   0,  0},
+    {15.0,  7,  '1', '5',  0,  0},
+    {30.0,  7,  '3', '0',  0,  0},
+    {45.0,  11, 'N', 'E',  0,  0},
+    {60.0,  7,  '6', '0',  0,  0},
+    {75.0,  7,  '7', '5',  0,  0},
+    {90.0,  14, 'E',  0,   0,  0},
+    {105.0, 7,  '1', '0', '5', 0},
+    {120.0, 7,  '1', '2', '0', 0},
+    {135.0, 11, 'E', 'S',  0,  0},
+    {150.0, 7,  '1', '5', '0', 0},
+    {165.0, 7,  '1', '6', '5', 0},
+    {180.0, 14, 'S',  0,   0,  0},
+    {195.0, 7,  '1', '9', '5', 0},
+    {210.0, 7,  '2', '1', '0', 0},
+    {225.0, 11, 'S', 'W',  0,  0},
+    {240.0, 7,  '2', '4', '0', 0},
+    {255.0, 7,  '2', '5', '5', 0},
+    {270.0, 14, 'W',  0,   0,  0},
+    {285.0, 7,  '2', '8', '5', 0},
+    {300.0, 7,  '3', '0', '0', 0},
+    {315.0, 11, 'W', 'N',  0,  0},
+    {330.0, 7,  '3', '3', '0', 0},
+    {345.0, 7,  '3', '4', '5', 0}
 };
 
 struct Position_Data_T positions_memory[POINTS_MAX];
@@ -168,6 +168,7 @@ static struct Point_T calculate_cordinates(struct Head_Track_T head, float azimu
   }
 
   point.x = (int16_t)(new_azimuth * FOV_CALIBRATION) + X_CENTER;
+  point.x = 127 - point.x;
   point.y = (int16_t)(new_pitch   * FOV_CALIBRATION) + Y_CENTER;
   point.y = 63 - point.y;
 
@@ -264,8 +265,7 @@ static void process_point(struct Head_Track_T head, struct Position_Data_T posit
   oled_write_text(point.x, point.y-5, position.name, 5, true);
   char number[4] = {0};
   distance_to_text(position.distance, number, sizeof(number));
-  // oled_write_text(point.x, point.y-11, number, true);
-  oled_write_text(point.x, point.y-11, position.name, 14, true);
+  oled_write_text(point.x, point.y-11, number, 5, true);
 }
 
 static void process_all_points(struct Head_Track_T head, struct Position_Data_T positions[], uint32_t size, bool adjust_roll)
@@ -293,58 +293,14 @@ static void process_compass(struct Head_Track_T head, struct Compass_Data_T comp
       }
       point_start   = calculate_cordinates(head, compass_array[i].azimuth, COMPASS_PITCH_ZERO, adjust_roll);
 
-      if (compass_array[i].large) {
+      if (compass_array[i].font_size == 14) {
         point_end = calculate_cordinates(head, compass_array[i].azimuth, COMPASS_PITCH_LONG, adjust_roll);
       } else {
         point_end = calculate_cordinates(head, compass_array[i].azimuth, COMPASS_PITCH_SHORT, adjust_roll);
       }
       oled_write_line(point_start.x, point_start.y, point_end.x, point_end.y);
 
-      if(compass_array[i].large) {
-        switch(compass_array[i].text[0]) { // process large main letter direction
-        case 'N':
-          oled_write_N(point_start.x, point_start.y - 6, COMPASS_LETTER_LARGE);
-          break;
-        case 'S':
-          oled_write_S(point_start.x, point_start.y - 6, COMPASS_LETTER_LARGE);
-          break;
-        case 'W':
-          oled_write_W(point_start.x, point_start.y - 6, COMPASS_LETTER_LARGE);
-          break;
-        case 'E':
-          oled_write_E(point_start.x, point_start.y - 6, COMPASS_LETTER_LARGE);
-          break;
-        }
-      } else if(compass_array[i].text[1] != 0) {  // process small double letter direction
-        switch(compass_array[i].text[0]) {
-        case 'N':
-          oled_write_N(point_start.x - 4, point_start.y - 5, COMPASS_LETTER_SMALL);
-          break;
-        case 'S':
-          oled_write_S(point_start.x - 4, point_start.y - 5, COMPASS_LETTER_SMALL);
-          break;
-        case 'W':
-          oled_write_W(point_start.x - 4, point_start.y - 5, COMPASS_LETTER_SMALL);
-          break;
-        case 'E':
-          oled_write_E(point_start.x - 4, point_start.y - 5, COMPASS_LETTER_SMALL);
-          break;
-        }
-        switch(compass_array[i].text[1]) {
-        case 'N':
-          oled_write_N(point_start.x + 4, point_start.y - 5, COMPASS_LETTER_SMALL);
-          break;
-        case 'S':
-          oled_write_S(point_start.x + 4, point_start.y - 5, COMPASS_LETTER_SMALL);
-          break;
-        case 'W':
-          oled_write_W(point_start.x + 4, point_start.y - 5, COMPASS_LETTER_SMALL);
-          break;
-        case 'E':
-          oled_write_E(point_start.x + 4, point_start.y - 5, COMPASS_LETTER_SMALL);
-          break;
-        }
-      }
+      oled_write_text(point_start.x, point_start.y - 1,compass_array[i].text, compass_array[i].font_size, true);
     }
   }
 }
@@ -360,9 +316,9 @@ void position_set_roll(float roll_new)
 void position_set_azimuth(float pan_new)
 {
   if (pan_new < 0) {
-    head_track.azimuth = pan_new + 360.0;
+    head_track.azimuth = -pan_new;
   } else {
-    head_track.azimuth = pan_new;
+    head_track.azimuth = 360 - pan_new;
   }
 }
 

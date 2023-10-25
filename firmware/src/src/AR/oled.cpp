@@ -172,6 +172,7 @@ enum TEXT_ALIGNMENT oled_font_alignment;
 uint16_t a_char[5] = {0xFE, 0x05, 0x05, 0x05, 0xFE};
 extern const uint16_t *const* pix5;
 extern const uint16_t *const* pix7;
+extern const uint16_t *const* pix11;
 extern const uint16_t *const* pix14;
 
 
@@ -189,6 +190,11 @@ static const uint16_t *const*get_font_param(uint8_t height, uint8_t *width)
     if (width != nullptr)
       *width = 4;
     test_font = pix7;
+    break;
+  case 11:
+    if (width != nullptr)
+      *width = 7;
+    test_font = pix11;
     break;
   case 14:
     if (width != nullptr)
