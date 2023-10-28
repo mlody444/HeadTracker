@@ -6,14 +6,6 @@
 #define X_CENTER    63
 #define Y_CENTER    31
 
-enum TEXT_ALIGNMENT {
-    LEFT = 0,
-    CENTER,
-    RIGHT,
-    TEXT_ALIGNMENT_MAX
-};
-
-void oled_set_font(uint8_t font_size, enum TEXT_ALIGNMENT alignment);
 void oled_write_char(int16_t x, int16_t y, char letter, uint8_t font_size);
 void oled_write_text(int16_t x, int16_t y, char* text, uint8_t text_size, bool center);
 

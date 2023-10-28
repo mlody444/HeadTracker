@@ -25,9 +25,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <math.h>
-
-#include <string.h> // temporary for strlen ONLY
-#include <stdlib.h> // utoa ONLY
+#include <string.h> // strlen - for verification
 
 #include "position.h"
 #include "log.h"
@@ -237,31 +235,24 @@ static void process_point(struct Head_Track_T head, struct Position_Data_T posit
   switch(position.point_type) {
   case DIAMOND:
     oled_draw_diamond(point.x, point.y);
-    // oled_write_text(point.x - 7, point.y-11, "103", true);
     break;
   case SQUARE:
     oled_draw_square(point.x, point.y);
     break;
   case TRIANGLE:
     oled_draw_triangle(point.x, point.y);
-    // oled_write_text(point.x - 7, point.y-11, "4.7", false);
     break;
   case X_SHAPE:
     oled_draw_x_shape(point.x, point.y);
     break;
   case CIRCLE:
     oled_draw_circle(point.x, point.y);
-    // oled_write_text(point.x - 7, point.y-11, "451", false);
     break;
   default:
     oled_draw_square(point.x, point.y);
     oled_draw_x_shape(point.x, point.y);
     break;
   }
-  // position.name[0] = 'R';
-  // position.name[1] = 'O';
-  // oled_write_char(point.x-3, point.y-5, position.name[0], 5);
-  // oled_write_char(point.x+3, point.y-5, position.name[1], 5);
   oled_write_text(point.x, point.y-5, position.name, 5, true);
   char number[4] = {0};
   distance_to_text(position.distance, number, sizeof(number));
@@ -408,56 +399,6 @@ void position_Thread()
   point_data.point_type = TRIANGLE;
   position_add_point(point_data);
 
-  // point_data.azimuth = 105.0;
-  // point_data.pitch = 2.0;
-  // point_data.name[4] = '4';
-  // point_data.point_type = X_SHAPE;
-  // position_add_point(point_data);
-
-  // point_data.azimuth = 170;
-  // point_data.pitch = 8;
-  // point_data.name[4] = '5';
-  // point_data.point_type = DIAMOND;
-  // position_add_point(point_data);
-
-  // point_data.azimuth = 230.0;
-  // point_data.pitch = -12.0;
-  // point_data.name[4] = '6';
-  // point_data.point_type = SQUARE;
-  // position_add_point(point_data);
-
-  // point_data.azimuth = 230.0;
-  // point_data.pitch = 6.0;
-  // point_data.name[4] = '7';
-  // point_data.point_type = TRIANGLE;
-  // position_add_point(point_data);
-
-  // point_data.azimuth = 300.0;
-  // point_data.pitch = -4.0;
-  // point_data.name[4] = '8';
-  // point_data.point_type = SQUARE;
-  // position_add_point(point_data);
-
-  // point_data.azimuth = 345.0;
-  // point_data.pitch = 8.0;
-  // point_data.name[4] = '9';
-  // point_data.point_type = TRIANGLE;
-  // position_add_point(point_data);
-
-  // point_data.azimuth = 350.0;
-  // point_data.pitch = 2.0;
-  // point_data.name[4] = 'A';
-  // point_data.point_type = CIRCLE;
-  // position_add_point(point_data);
-
-  // point_data.azimuth = 358.0;
-  // point_data.pitch = -3.0;
-  // point_data.name[4] = 'B';
-  // point_data.point_type = DIAMOND;
-  // position_add_point(point_data);
-
-  int16_t y = 0;
-
   while (1) {
     oled_clean();
 
@@ -468,26 +409,5 @@ void position_Thread()
 
     oled_update();
     rt_sleep_ms(25);
-
-    // oled_clean();
-    // oled_write_line(100, 0,  127, 0);
-    // oled_write_line(100, 8,  127, 8);
-    // oled_write_line(100, 16, 127, 16);
-    // oled_write_line(100, 24, 127, 24);
-    // oled_write_line(100, 32, 127, 32);
-    // oled_write_line(100, 40, 127, 40);
-    // oled_write_line(100, 48, 127, 48);
-    // oled_write_line(100, 56, 127, 56);
-
-    // oled_write_text(64, y, "T", 14, true);
-
-    // oled_write_line(0, y, 20, y);
-    // y++;
-    // if (y == 64) {
-    //   y = 0;
-    // }
-
-    // oled_update();
-    // rt_sleep_ms(250);
   }
 }

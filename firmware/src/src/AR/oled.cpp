@@ -62,6 +62,11 @@ const struct display_buffer_descriptor buf_desc = {
 
 uint8_t buf[1024] = {0};
 
+extern const uint16_t *const* pix5;
+extern const uint16_t *const* pix7;
+extern const uint16_t *const* pix11;
+extern const uint16_t *const* pix14;
+
 static uint8_t count_spaces(char* text, uint8_t size);
 
 static uint8_t count_spaces(char* text, uint8_t size)
@@ -70,8 +75,9 @@ static uint8_t count_spaces(char* text, uint8_t size)
   uint8_t i = 0;
 
   for (i = 0; i < size; i++) {
-    if (text[i] == ' ')
+    if (text[i] == ' ') {
       spaces++;
+    }
   }
 
   return spaces;
@@ -167,67 +173,57 @@ void oled_write_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1)
   }
 }
 
-enum TEXT_ALIGNMENT oled_font_alignment;
-
-uint16_t a_char[5] = {0xFE, 0x05, 0x05, 0x05, 0xFE};
-extern const uint16_t *const* pix5;
-extern const uint16_t *const* pix7;
-extern const uint16_t *const* pix11;
-extern const uint16_t *const* pix14;
-
-
 static const uint16_t *const*get_font_param(uint8_t height, uint8_t *width)
 {
   const uint16_t *const*test_font;
+  uint8_t font_width = 0;
 
   switch (height) {
   case 5:
-    if (width != nullptr)
-      *width = 4;
+    font_width = 4;
     test_font = pix5;
     break;
   case 7:
-    if (width != nullptr)
-      *width = 4;
+    font_width = 4;
     test_font = pix7;
     break;
   case 11:
-    if (width != nullptr)
-      *width = 7;
+    font_width = 7;
     test_font = pix11;
     break;
   case 14:
-    if (width != nullptr)
-      *width = 8;
+    font_width = 8;
     test_font = pix14;
     break;
   default:
-    if (width != nullptr)
-      *width = 4;
+    font_width = 4;
     test_font = pix5;
     break;
+  }
+
+  if (width != nullptr) {
+    *width = font_width;
   }
 
   return test_font;
 }
 
-union test_MASK {
+union Column_Mask {
   uint32_t value;
   uint8_t values[4];
 };
 
 void oled_write_char(int16_t x, int16_t y, char letter, uint8_t font_size)
 {
-  const uint16_t *x_char;
+  union Column_Mask column_mask;
+  uint8_t oled_font_width = 0;
   const uint16_t *const*font;
-  union test_MASK mask;
+  const uint16_t *x_char;
   int16_t y_buf_mask;
   int16_t y_buf_end;
   int16_t buf_index;
   int16_t y_cur_pos;
   uint8_t i = 0;
-  uint8_t oled_font_width = 0;
-  uint8_t oled_font_size = 8;
 
   font = get_font_param(font_size, &oled_font_width);
 
@@ -236,24 +232,24 @@ void oled_write_char(int16_t x, int16_t y, char letter, uint8_t font_size)
 
   x_char = font[letter - 0x20];
 
-/* process multiple Y column of pixels to display char*/
-
+/* process all Y columns of pixels to display char*/
   for (i = 0; i < oled_font_width; i++) {
+    /* process single Y column of pixels */
     if (x < 0) {
       x++;
       continue;
     }
-    if (x >= WIDTH)
+    if (x >= WIDTH) {
       break;
+    }
 
-    mask.value = (x_char[i] << (8 - (y % 8)));
+    column_mask.value = (x_char[i] << (8 - (y % 8)));
     y_cur_pos = 7 - (y / 8);
-/* process single Y column of pixels */
     uint8_t temp_y;
     uint8_t j = 0;
     for (j = 0; j < test_y_height; j++) {
 
-      y_buf_mask = mask.values[j];
+      y_buf_mask = column_mask.values[j];
 
       buf_index = x + y_cur_pos * WIDTH;
       if (buf_index < 0 || buf_index >= 1024) {
