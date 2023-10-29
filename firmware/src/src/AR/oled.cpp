@@ -62,26 +62,16 @@ const struct display_buffer_descriptor buf_desc = {
 
 uint8_t buf[1024] = {0};
 
+union Column_Mask {
+  uint32_t value;
+  uint8_t values[4];
+};
+
+
 extern const uint16_t *const* pix5;
 extern const uint16_t *const* pix7;
 extern const uint16_t *const* pix11;
 extern const uint16_t *const* pix14;
-
-static uint8_t count_spaces(char* text, uint8_t size);
-
-static uint8_t count_spaces(char* text, uint8_t size)
-{
-  uint8_t spaces = 0;
-  uint8_t i = 0;
-
-  for (i = 0; i < size; i++) {
-    if (text[i] == ' ') {
-      spaces++;
-    }
-  }
-
-  return spaces;
-}
 
 void oled_write_pixel(int16_t x, int16_t y)
 {
@@ -208,11 +198,6 @@ static const uint16_t *const*get_font_param(uint8_t height, uint8_t *width)
   return test_font;
 }
 
-union Column_Mask {
-  uint32_t value;
-  uint8_t values[4];
-};
-
 void oled_write_char(int16_t x, int16_t y, char letter, uint8_t font_size)
 {
   union Column_Mask column_mask;
@@ -220,9 +205,9 @@ void oled_write_char(int16_t x, int16_t y, char letter, uint8_t font_size)
   const uint16_t *const*font;
   const uint16_t *x_char;
   int16_t y_buf_mask;
-  int16_t y_buf_end;
   int16_t buf_index;
   int16_t y_cur_pos;
+  uint8_t j = 0;
   uint8_t i = 0;
 
   font = get_font_param(font_size, &oled_font_width);
@@ -245,15 +230,13 @@ void oled_write_char(int16_t x, int16_t y, char letter, uint8_t font_size)
 
     column_mask.value = (x_char[i] << (8 - (y % 8)));
     y_cur_pos = 7 - (y / 8);
-    uint8_t temp_y;
-    uint8_t j = 0;
     for (j = 0; j < test_y_height; j++) {
 
       y_buf_mask = column_mask.values[j];
 
       buf_index = x + y_cur_pos * WIDTH;
       if (buf_index < 0 || buf_index >= 1024) {
-        LOGI("y_cur_pos = %d, y_buf_end = %d, x = %d, y = %d, buf_index = %d", y_cur_pos, y_buf_end, x, y, buf_index);
+        LOGI("y_cur_pos = %d, x = %d, y = %d, buf_index = %d", y_cur_pos, x, y, buf_index);
       } else {
         oled_buf[buf_index] |= y_buf_mask;
       }
@@ -269,20 +252,16 @@ void oled_write_char(int16_t x, int16_t y, char letter, uint8_t font_size)
 void oled_write_text(int16_t x, int16_t y, char* text, uint8_t text_size, bool center)
 {
   uint8_t text_length = strlen(text);
-  uint8_t spaces = count_spaces(text, text_size);
-
-  uint8_t x_shift = 0;
-
   const uint16_t *const*font;
   uint8_t width;
+
   font = get_font_param(text_size, &width);
-  uint8_t i, j;
 
   if (center) {
     x -= (text_length * width + text_length - 1) / 2;
   }
 
-  while (*text != NULL) {
+  while (*text != '\0') {
     oled_write_char(x, y, *text, text_size);
     x += 1 + width;
     text++;
