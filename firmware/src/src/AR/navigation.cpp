@@ -254,6 +254,102 @@ void navigation_add_point(char name[], uint8_t size, int32_t lat, int32_t lon, i
     LOGI("Discarding new point \"%s\", no more space", name);
 }
 
+static void del_point(uint32_t point)
+{
+    if (point >= POINTS_MAX) {
+        LOGI("ERR - nav del_point - point out of range: %d", point);
+    }
+
+    position_del_point(nav_points[point].name, strlen(nav_points[point].name));
+
+    memset(&nav_points[point], 0, sizeof(NAV_POINT));
+}
+
+static void del_all_points()
+{
+    uint32_t i = 0;
+
+    for (i = 0; i < POINTS_MAX; i++) {
+        if (nav_points[i].name[0] != '\0'){
+            del_point(i);
+        }
+    }
+}
+
+void navigation_add_point(char name[], uint8_t size, int32_t lat, int32_t lon, int32_t alt, enum Point_Type_T point_type)
+{
+    uint8_t i = 0;
+
+    if (name == nullptr) {
+        LOGI("Error - navigation_add_point name nullptr");
+        return;
+    }
+
+    if (size > NAME_MAX) {
+        LOGI("Error - navigation_add_point to long string size = %d", size);
+        return;
+    }
+
+    if (name[0] == '\0' || name[0] == ' ' ||
+        (name[0] == 'M' && name[1] == 'y')) {
+        if (lat == (int32_t)0xFFFFFFFF || lon == (int32_t)0xFFFFFFFF) {
+            LOGI("Deleting all points & self position");
+            self_pos.lat = INFINITY;
+            self_pos.lon = INFINITY;
+            self_pos.alt = 0;
+            del_all_points();
+        } else {
+            LOGI("Updating self position lat = %d, lon = %d, alt = %d", lat, lon, alt);
+            self_pos.lat = (DEG_TO_RAD * lat) / DIGITS;
+            self_pos.lon = (DEG_TO_RAD * lon) / DIGITS;
+            self_pos.alt = alt;
+            update_all();
+        }
+        return;
+    }
+
+    /* search for already added point */
+    for(i = 0; i < POINTS_MAX; i++) {
+        if (0 == strncmp(name, nav_points[i].name, size) &&
+            size == strlen(nav_points[i].name))
+        {
+            if (lat == (int32_t)0xFFFFFFFF || lon == (int32_t)0xFFFFFFFF) {
+                LOGI("Deleting point = %d, name = %c%c%c%c", i, name[0], name[1], name[2], name[3]);
+                del_point(i);
+                return;
+            } else {
+                LOGI("Updating point = %d, lat = %d, lon = %d, alt = %d", i, lat, lon, alt);
+                nav_points[i].cords.lat = (DEG_TO_RAD * lat) / DIGITS;
+                nav_points[i].cords.lon = (DEG_TO_RAD * lon) / DIGITS;
+                nav_points[i].cords.alt = alt;
+                nav_points[i].update = true;
+                return;
+            }
+        }
+    }
+
+    if (lat == (int32_t)0xFFFFFFFF || lon == (int32_t)0xFFFFFFFF) {
+        LOGI("ERR - there is no point to delete: %c%c%c%c", name[0], name[1], name[2], name[3]);
+        return;
+    }
+
+    /* This is new point to be added on empty space */
+    for (i = 0; i < POINTS_MAX; i++) {
+        if (nav_points[i].name[0] == '\0'){
+            LOGI("Creating point = %d, lat = %d, lon = %d, alt = %d", i, lat, lon, alt);
+            nav_points[i].cords.lat = (DEG_TO_RAD * lat) / DIGITS;
+            nav_points[i].cords.lon = (DEG_TO_RAD * lon) / DIGITS;
+            nav_points[i].cords.alt = alt;
+            strncpy(nav_points[i].name, name, size);
+            nav_points[i].update = true;
+
+            return;
+        }
+    }
+    /* There is no more free space to add point */
+    LOGI("Discarding new point \"%s\", no more space", name);
+}
+
 void navigation_Thread()
 {
     uint32_t update_counter = 0;
