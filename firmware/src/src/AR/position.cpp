@@ -471,7 +471,6 @@ void position_Thread()
 // DEBUG START Demo to be removed
     if (counter1 == 40) {
       // LOGI("Updating counter");
-
       counter1 = 0;
       counter2++;
       point_data.azimuth += azimuth;
