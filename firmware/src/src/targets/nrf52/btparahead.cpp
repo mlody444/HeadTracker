@@ -206,7 +206,26 @@ typedef struct __attribute__((__packed__))  {
     uint32_t distance;
 } mydata_s;
 
+typedef struct __attribute__((__packed__))  {
+    char name[16];
+    int32_t lat;
+    int32_t lon;
+    int32_t alt;
+} navi_data_s;
+
+#include "AR/common_ar.h"
+
+typedef struct __attribute__((__packed__))  {
+    char name[16];
+    int32_t lat;
+    int32_t lon;
+    int32_t alt;
+    enum Point_Type_T point_type;
+} navi_data_v2_s;
+
+
 #include "AR/position.h"
+#include "AR/navigation.h"
 
 static ssize_t write_ct(struct bt_conn *conn, const struct bt_gatt_attr *attr, const void *buf, uint16_t len, uint16_t offset, uint8_t flags)
 {
@@ -216,7 +235,7 @@ static ssize_t write_ct(struct bt_conn *conn, const struct bt_gatt_attr *attr, c
   if(len == sizeof(mydata_s)) {
     memcpy(&incoming_friendly, buf, len);
     // As first step it should be enough ;]
-    LOGI("Something was received, Name = %c%c%c%c, distance = %d, pitch = %d, azimuth = %d", incoming_friendly.name[0], incoming_friendly.name[1], incoming_friendly.name[2],incoming_friendly.name[3], incoming_friendly.distance, incoming_friendly.tilt, incoming_friendly.pan);
+    LOGI("Simple was received, Name = %c%c%c%c, distance = %d, pitch = %d, azimuth = %d", incoming_friendly.name[0], incoming_friendly.name[1], incoming_friendly.name[2],incoming_friendly.name[3], incoming_friendly.distance, incoming_friendly.tilt, incoming_friendly.pan);
     struct Position_Data_T position_data = {0};
     memcpy(position_data.name, incoming_friendly.name, 4);
     position_data.distance = incoming_friendly.distance;
@@ -224,6 +243,24 @@ static ssize_t write_ct(struct bt_conn *conn, const struct bt_gatt_attr *attr, c
     position_data.pitch = incoming_friendly.tilt/100;
     position_data.point_type = DIAMOND;
     position_add_point(position_data);
+  }
+
+  if(len == sizeof(navi_data_s)) {
+    navi_data_s incoming_point;
+    memcpy(&incoming_point, buf, len);
+    incoming_point.name[15] = '\0';
+    // As first step it should be enough ;]
+    LOGI("Navitgation was received, Name = %c%c%c%c, lat = %d, lon = %d, alt = %d", incoming_point.name[0], incoming_point.name[1], incoming_point.name[2], incoming_point.name[3], incoming_point.lat, incoming_point.lon, incoming_point.alt);
+    navigation_add_point(incoming_point.name, strlen(incoming_point.name), incoming_point.lat, incoming_point.lon, incoming_point.alt, DIAMOND);
+  }
+
+  if(len == sizeof(navi_data_v2_s)) {
+    navi_data_v2_s incoming_point_v2;
+    memcpy(&incoming_point_v2, buf, len);
+    incoming_point_v2.name[15] = '\0';
+    // As first step it should be enough ;]
+    LOGI("Navitgation v2 was received, Name = %c%c%c%c, lat = %d, lon = %d, alt = %d", incoming_point_v2.name[0], incoming_point_v2.name[1], incoming_point_v2.name[2], incoming_point_v2.name[3], incoming_point_v2.lat, incoming_point_v2.lon, incoming_point_v2.alt);
+    navigation_add_point(incoming_point_v2.name, strlen(incoming_point_v2.name), incoming_point_v2.lat, incoming_point_v2.lon, incoming_point_v2.alt, incoming_point_v2.point_type);
   }
 
   return len;

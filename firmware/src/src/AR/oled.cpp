@@ -313,25 +313,37 @@ void oled_draw_diamond(int16_t x, int16_t y, bool cropped)
   oled_write_line(x                  , y - POINT_HALF_SIZE, x - POINT_HALF_SIZE, y                  , line_type);
 }
 
-void oled_draw_square(int16_t x, int16_t y)
+void oled_draw_square(int16_t x, int16_t y, bool cropped)
 {
-  oled_write_line(x - POINT_HALF_SIZE, y - POINT_HALF_SIZE, x - POINT_HALF_SIZE, y + POINT_HALF_SIZE, Solid);
-  oled_write_line(x - POINT_HALF_SIZE, y + POINT_HALF_SIZE, x + POINT_HALF_SIZE, y + POINT_HALF_SIZE, Solid);
-  oled_write_line(x + POINT_HALF_SIZE, y + POINT_HALF_SIZE, x + POINT_HALF_SIZE, y - POINT_HALF_SIZE, Solid);
-  oled_write_line(x + POINT_HALF_SIZE, y - POINT_HALF_SIZE, x - POINT_HALF_SIZE, y - POINT_HALF_SIZE, Solid);
+  enum Line_T line_type = Solid;
+  if (cropped) {
+    line_type = Cropped_0;
+  }
+  oled_write_line(x - POINT_HALF_SIZE, y - POINT_HALF_SIZE, x - POINT_HALF_SIZE, y + POINT_HALF_SIZE, line_type);
+  oled_write_line(x - POINT_HALF_SIZE, y + POINT_HALF_SIZE, x + POINT_HALF_SIZE, y + POINT_HALF_SIZE, line_type);
+  oled_write_line(x + POINT_HALF_SIZE, y + POINT_HALF_SIZE, x + POINT_HALF_SIZE, y - POINT_HALF_SIZE, line_type);
+  oled_write_line(x + POINT_HALF_SIZE, y - POINT_HALF_SIZE, x - POINT_HALF_SIZE, y - POINT_HALF_SIZE, line_type);
 }
 
-void oled_draw_triangle(int16_t x, int16_t y)
+void oled_draw_triangle(int16_t x, int16_t y, bool cropped)
 {
-  oled_write_line(x + POINT_HALF_SIZE, y + POINT_HALF_SIZE, x                  , y - POINT_HALF_SIZE, Solid);
-  oled_write_line(x                  , y - POINT_HALF_SIZE, x - POINT_HALF_SIZE, y + POINT_HALF_SIZE, Solid);
-  oled_write_line(x + POINT_HALF_SIZE, y + POINT_HALF_SIZE, x - POINT_HALF_SIZE, y + POINT_HALF_SIZE, Solid);
+  enum Line_T line_type = Solid;
+  if (cropped) {
+    line_type = Cropped_0;
+  }
+  oled_write_line(x + POINT_HALF_SIZE, y + POINT_HALF_SIZE, x                  , y - POINT_HALF_SIZE, line_type);
+  oled_write_line(x                  , y - POINT_HALF_SIZE, x - POINT_HALF_SIZE, y + POINT_HALF_SIZE, line_type);
+  oled_write_line(x + POINT_HALF_SIZE, y + POINT_HALF_SIZE, x - POINT_HALF_SIZE, y + POINT_HALF_SIZE, line_type);
 }
 
-void oled_draw_x_shape(int16_t x, int16_t y)
+void oled_draw_x_shape(int16_t x, int16_t y, bool cropped)
 {
-  oled_write_line(x - POINT_HALF_SIZE, y + POINT_HALF_SIZE, x + POINT_HALF_SIZE, y - POINT_HALF_SIZE, Solid);
-  oled_write_line(x - POINT_HALF_SIZE, y - POINT_HALF_SIZE, x + POINT_HALF_SIZE, y + POINT_HALF_SIZE, Solid);
+  enum Line_T line_type = Solid;
+  if (cropped) {
+    line_type = Cropped_0;
+  }
+  oled_write_line(x - POINT_HALF_SIZE, y + POINT_HALF_SIZE, x + POINT_HALF_SIZE, y - POINT_HALF_SIZE, line_type);
+  oled_write_line(x - POINT_HALF_SIZE, y - POINT_HALF_SIZE, x + POINT_HALF_SIZE, y + POINT_HALF_SIZE, line_type);
 }
 
 void oled_draw_circle(int16_t x0, int16_t y0)
