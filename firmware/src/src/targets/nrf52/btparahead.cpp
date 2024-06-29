@@ -219,9 +219,16 @@ typedef struct __attribute__((__packed__))  {
     char name[16];
     int32_t lat;
     int32_t lon;
-    int32_t alt;
+    int16_t alt;
+    uint16_t point_id;  // 12bits ID, 4 bits for flag, 0 - always show,
+    uint8_t ttl;  // time to life (0xFF - unlimited)
     enum Point_Type_T point_type;
 } navi_data_v2_s;
+
+struct PACKAGED {
+  uint8_t size;
+  navi_data_v2_s frame[5];
+}
 
 
 #include "AR/position.h"
