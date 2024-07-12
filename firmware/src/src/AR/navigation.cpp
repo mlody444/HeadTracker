@@ -34,20 +34,12 @@
 
 #define POINTS_MAX 32
 #define UPDATE_MAX 10
-#define DIGITS     100000.0
-#define COMB_DEG_TO_RAD 0.0000001745329251994329576f
 #define EARTH_R    6371000.0
 #define NAME_MAX   16
 #define DEL_POS    36000000
 
 #define DEL_LAT 18000000
 #define DEL_LON 9000000
-
-struct NAV_CORDS {
-    float lat;
-    float lon;
-    int32_t alt;
-};
 
 struct NAV_POINT {
     char name[NAME_MAX];
@@ -56,8 +48,15 @@ struct NAV_POINT {
     enum Point_Type_T point_type;
 };
 
-struct NAV_POINT nav_points[POINTS_MAX];
+struct NAV_POINT_V2 {
+    char name[NAME_MAX];
+    struct NAV_CORDS cords;
+    bool update;
+    enum Point_Type_T point_type;
+};
 
+navi_data_v3_s nav_points_v2[POINTS_MAX];
+navi_data_v3_s empty_point = {"", 18000000, 9000000, 0, {ID_EMPTY, 0, 0}, 0xFF, DIAMOND};
 struct NAV_CORDS self_pos;
 
 static bool self_position_available();
@@ -69,6 +68,7 @@ static void del_all_points();
 static float calculate_azimuth(float lat_self, float lon_self, float lat_point, float lon_point);
 static float calculate_distance(float lat_self, float lon_self, float lat_point, float lon_point);
 static float calculate_pitch(uint32_t distance, int32_t alt_diff);
+static void init_nav_points_v2();
 
 static bool self_position_available()
 {
@@ -83,8 +83,8 @@ static void update_all()   // clear flag for all
     uint8_t i = 0;
 
     for (i = 0; i < POINTS_MAX; i++) {
-        if (nav_points[i].name[0] != '\0') {
-            nav_points[i].update = true;
+        if (nav_points_v2[i].name[0] != '\0') {
+            nav_points_v2[i].update = true;
         }
     }
 }
@@ -130,9 +130,9 @@ static float calculate_pitch(uint32_t distance, int32_t alt_diff)
 
 static void update_point(uint32_t point)
 {
-    int32_t alt_diff = nav_points[point].cords.alt - self_pos.alt;
-    float lat2 = nav_points[point].cords.lat;
-    float lon2 = nav_points[point].cords.lon;
+    int32_t alt_diff = nav_points_v2[point].cords.alt - self_pos.alt;
+    float lat2 = nav_points_v2[point].cords.lat;
+    float lon2 = nav_points_v2[point].cords.lon;
     float lat1 = self_pos.lat;
     float lon1 = self_pos.lon;
     uint32_t distance = 0;
@@ -144,7 +144,7 @@ static void update_point(uint32_t point)
         return;
     }
 
-    if (nav_points[point].name[0] == '\0') {
+    if (nav_points_v2[point].name[0] == '\0') {
         LOGI("ERR - nav update point - missing point: %d", point);
         return;
     }
@@ -154,12 +154,16 @@ static void update_point(uint32_t point)
         return;
     }
 
+    if (nav_points_v2[point].ttl == 0) {
+        return;
+    }
+
     distance = (uint32_t)(calculate_distance(lat1, lon1, lat2, lon2) * EARTH_R);
     azimuth = calculate_azimuth(lat1, lon1, lat2, lon2) * RAD_TO_DEG;
     pitch = calculate_pitch(distance, alt_diff);
 
-    position_add_point(nav_points[point].name, strlen(nav_points[point].name), azimuth, pitch, distance, nav_points[point].point_type);
-    nav_points[point].update = false;
+    position_add_point(nav_points_v2[point].name, strlen(nav_points_v2[point].name), azimuth, pitch, distance, nav_points_v2[point].point_type, nav_points_v2[point].nav);
+    nav_points_v2[point].update = false;
 }
 
 static void del_point(uint32_t point)
@@ -264,9 +268,9 @@ static void del_point(uint32_t point)
         LOGI("ERR - nav del_point - point out of range: %d", point);
     }
 
-    position_del_point(nav_points[point].name, strlen(nav_points[point].name));
+    position_del_point((uint16_t)nav_points_v2[point].nav.id);
 
-    memset(&nav_points[point], 0, sizeof(NAV_POINT));
+    memset(&nav_points_v2[point], 0, sizeof(navi_data_v3_s));
 }
 
 static void del_all_points()
@@ -274,122 +278,171 @@ static void del_all_points()
     uint32_t i = 0;
 
     for (i = 0; i < POINTS_MAX; i++) {
-        if (nav_points[i].name[0] != '\0'){
+        if (nav_points_v2[i].name[0] != '\0'){
             del_point(i);
         }
     }
 }
 
-void navigation_add_point(char name[], uint8_t size, int32_t lat, int32_t lon, int32_t alt, enum Point_Type_T point_type)
+static uint32_t search_for_id(uint16_t id)
 {
-    uint8_t i = 0;
-
-    if (name == nullptr) {
-        LOGI("Error - navigation_add_point name nullptr");
-        return;
-    }
-
-    if (size > NAME_MAX) {
-        LOGI("Error - navigation_add_point to long string size = %d", size);
-        return;
-    }
-
-    if (name[0] == '\0' || name[0] == ' ' ||
-        (name[0] == 'M' && name[1] == 'y')) {
-        if (lat > DEL_LAT || lon > DEL_LON) {
-            LOGI("Deleting all points & self position");
-            self_pos.lat = INFINITY;
-            self_pos.lon = INFINITY;
-            self_pos.alt = 0;
-            del_all_points();
-        } else {
-            LOGI("Updating self position lat = %d, lon = %d, alt = %d", lat, lon, alt);
-            self_pos.lat = (DEG_TO_RAD * lat) / DIGITS;
-            self_pos.lon = (DEG_TO_RAD * lon) / DIGITS;
-            self_pos.alt = alt;
-            update_all();
-        }
-        return;
-    }
-
-    /* search for already added point */
-    for(i = 0; i < POINTS_MAX; i++) {
-        if (0 == strncmp(name, nav_points[i].name, size) &&
-            size == strlen(nav_points[i].name))
-        {
-            if (lat > DEL_LAT || lon > DEL_LON) {
-                LOGI("Deleting point = %d, name = %c%c%c%c", i, name[0], name[1], name[2], name[3]);
-                del_point(i);
-                return;
-            } else {
-                LOGI("Updating point = %d, lat = %d, lon = %d, alt = %d", i, lat, lon, alt);
-                nav_points[i].cords.lat = (DEG_TO_RAD * lat) / DIGITS;
-                nav_points[i].cords.lon = (DEG_TO_RAD * lon) / DIGITS;
-                nav_points[i].cords.alt = alt;
-                nav_points[i].update = true;
-                nav_points[i].point_type = point_type;
-                return;
-            }
-        }
-    }
-
-    if (lat > DEL_LAT || lon > DEL_LON) {
-        LOGI("ERR - there is no point to delete: %c%c%c%c", name[0], name[1], name[2], name[3]);
-        return;
-    }
-
-    /* This is new point to be added on empty space */
+    uint32_t i = 0;
     for (i = 0; i < POINTS_MAX; i++) {
-        if (nav_points[i].name[0] == '\0'){
-            LOGI("Creating point = %d, lat = %d, lon = %d, alt = %d", i, lat, lon, alt);
-            nav_points[i].cords.lat = (DEG_TO_RAD * lat) / DIGITS;
-            nav_points[i].cords.lon = (DEG_TO_RAD * lon) / DIGITS;
-            nav_points[i].cords.alt = alt;
-            strncpy(nav_points[i].name, name, size);
-            nav_points[i].update = true;
-            nav_points[i].point_type = point_type;
-            return;
+        if (nav_points_v2[i].nav.id == id) {
+            return i;
         }
     }
-    /* There is no more free space to add point */
-    LOGI("Discarding new point \"%s\", no more space", name);
+
+    return POINTS_MAX;
 }
 
-typedef struct __attribute__((__packed__))  {
-    char name[16];
-    int32_t lat;
-    int32_t lon;
-    int32_t alt;
-    enum Point_Type_T point_type;
-} navi_data_v2_s;
+static void init_nav_points_v2()
+{
+    uint32_t i = 0;
+    for (i = 0; i < POINTS_MAX; i++) {
+        nav_points_v2[i].nav.id = ID_EMPTY;
+    }
+}
 
-// Stadion, Cinema, castle, post
+static void ttl_decrement()
+{
+    uint32_t i = 0;
+    for (i = 0; i < POINTS_MAX; i++) {
+        if (nav_points_v2[i].ttl == 0xFF || nav_points_v2[i].ttl == 0 ||
+            nav_points_v2[i].nav.id == ID_EMPTY) {
+            continue;
+        }
+        nav_points_v2[i].ttl--;
+        if (nav_points_v2[i].ttl == 0) {
 
-navi_data_v2_s Stadion = {"Stadion", 4981934, 2404813, 289, DIAMOND_C};
-navi_data_v2_s Cinema  = {"Cinema",  4982104, 2402509, 280, CIRCLE};
-navi_data_v2_s Castle  = {"Castle",  4983289, 2402436, 300, TRIANGLE};
-navi_data_v2_s Post    = {"Post",    4983775, 2402384, 260, X_SHAPE};
+        }
+    }
+}
 
-navi_data_v2_s MyPhone = {"My",      4983220, 2404215, 260, DIAMOND};
+void navigation_add_point_v2(navi_data_v3_s *point)
+{
+    uint16_t i = 0;
+
+    if (point == nullptr) {
+        LOGI("Error - navigation_add_point_v2 point is nullptr");
+        return;
+    }
+
+    if (point->name[0] == '\0') {
+        LOGI("Error - navigation_add_point_v2 point name is empty");
+        return;
+    }
+
+    if (point->cords.lat > DEL_LAT || point->cords.lat < -DEL_LAT) {
+        LOGI("Error - navigation_add_point_v2 lat is incorrect");
+        return;
+    }
+
+    if (point->cords.lon > DEL_LON || point->cords.lon < -DEL_LON) {
+        LOGI("Error - navigation_add_point_v2 lon is incorrect");
+        return;
+    }
+
+    if (point->cords.alt > 8000 || point->cords.alt < -1000) {
+        LOGI("Error - navigation_add_point_v2 alt is incorrect");
+        return;
+    }
+
+    if (point->nav.id == 0 || point->nav.id == 0xFFF) {
+        LOGI("Error - navigation_add_point_v2 ID is incorrect");
+        return;
+    }
+
+    if (point->point_type >= POINT_TYPE_MAX) {
+        LOGI("Error - navigation_add_point_v2 ID is incorrect");
+        return;
+    }
+
+    LOGI("Adding point = %c%c%c%c, lat = %d, lon = %d, alt = %d", point->name[0], point->name[1], point->name[2], point->name[3],
+                                                                  (int32_t)(point->cords.lat * RAD_TO_DEG * 100.0),
+                                                                  (int32_t)(point->cords.lon * RAD_TO_DEG * 100.0),
+                                                                  point->cords.alt);
+
+    i = search_for_id(point->nav.id); // check if point already exist
+    if (i == POINTS_MAX) {
+        i = search_for_id(ID_EMPTY); // check if there is memory for new point
+    }
+
+    if (i < POINTS_MAX) {    // check if there is memory to store new point
+        nav_points_v2[i] = *point;
+        return;
+    }
+
+    LOGI("Error - navigation_add_point_v2 no space in memory");
+}
+
+void navigation_update_myself(NAV_CORDS_RAW myself_raw)
+{
+    if (myself_raw.lat > DEL_LAT || myself_raw.lat < -DEL_LAT) {
+        LOGI("Error - navigation_update_myself lat is incorrect");
+        return;
+    }
+
+    if (myself_raw.lon > DEL_LON || myself_raw.lon < -DEL_LON) {
+        LOGI("Error - navigation_update_myself lon is incorrect");
+        return;
+    }
+
+    if (myself_raw.alt > 8000 || myself_raw.alt < -1000) {
+        LOGI("Error - navigation_update_myself alt is incorrect");
+        return;
+    }
+
+    self_pos.lat = (DEG_TO_RAD * myself_raw.lat) / DIGITS;
+    self_pos.lon = (DEG_TO_RAD * myself_raw.lon) / DIGITS;
+    self_pos.alt = myself_raw.alt;
+}
+
+void navigation_del_pos(uint16_t id)
+{
+    uint32_t i = 0;
+    if (id == ID_EMPTY) {
+        for (i = 0; i < POINTS_MAX; i++) {
+           nav_points_v2[i] = empty_point;
+        }
+        return;
+    }
+
+    i = search_for_id(id);
+
+    if (i == POINTS_MAX) {
+        LOGI("WARNING - navigation_del_pos there is not point with ID = %d", id);
+        return;
+    }
+
+    LOGI("navigation_del_pos id = %d, i = %d", id, i);
+    position_del_point(id);
+    nav_points_v2[i] = empty_point;
+}
+
+void navigation_del_all()
+{
+    navigation_del_pos(ID_EMPTY);
+}
 
 void navigation_Thread()
 {
     uint32_t update_counter = 0;
+    uint32_t sec_timer = 0;
     uint32_t pos = 0;
     uint32_t i = 0;
 
-    navigation_add_point(Stadion.name, strlen(Stadion.name), Stadion.lat, Stadion.lon, Stadion.alt, Stadion.point_type);
-    navigation_add_point(Cinema.name,  strlen(Cinema.name),  Cinema.lat,  Cinema.lon,  Cinema.alt,  Cinema.point_type);
-    navigation_add_point(Castle.name,  strlen(Castle.name),  Castle.lat,  Castle.lon,  Castle.alt,  Castle.point_type);
-    navigation_add_point(Post.name,    strlen(Post.name),    Post.lat,    Post.lon,    Post.alt,    Post.point_type);
-    navigation_add_point(MyPhone.name, strlen(MyPhone.name), MyPhone.lat, MyPhone.lon, MyPhone.alt, MyPhone.point_type);
+    init_nav_points_v2();
+    rt_sleep_ms(3500);
 
     while (1) {
         update_counter = UPDATE_MAX;
+        sec_timer += NAV_DELAY;
         i = 0;
 
+        // process navigation points
         while (update_counter > 0 && i < POINTS_MAX && self_position_available()) {
-            if (nav_points[pos].update == true) {
+            if (nav_points_v2[pos].update == true) {
                 update_counter--;
                 update_point(pos);
             }
@@ -401,6 +454,12 @@ void navigation_Thread()
             }
         }
 
-        rt_sleep_ms(100);
+        // process TTL timer
+        if (sec_timer > 1000) {
+            sec_timer -= 1000;
+            ttl_decrement();
+        }
+
+        rt_sleep_ms(NAV_DELAY);
     }
 }
