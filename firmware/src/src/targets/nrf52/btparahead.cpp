@@ -219,16 +219,24 @@ typedef struct __attribute__((__packed__))  {
     char name[16];
     int32_t lat;
     int32_t lon;
+    int32_t alt;
+    enum Point_Type_T point_type;
+} navi_data_v2_s;
+
+typedef struct __attribute__((__packed__))  {
+    char name[16];
+    int32_t lat;
+    int32_t lon;
     int16_t alt;
     uint16_t point_id;  // 12bits ID, 4 bits for flag, 0 - always show,
     uint8_t ttl;  // time to life (0xFF - unlimited)
     enum Point_Type_T point_type;
-} navi_data_v2_s;
+} navi_data_v3_s;
 
 struct PACKAGED {
   uint8_t size;
-  navi_data_v2_s frame[5];
-}
+  navi_data_v3_s frame[5];
+};
 
 
 #include "AR/position.h"
@@ -266,7 +274,7 @@ static ssize_t write_ct(struct bt_conn *conn, const struct bt_gatt_attr *attr, c
     memcpy(&incoming_point_v2, buf, len);
     incoming_point_v2.name[15] = '\0';
     // As first step it should be enough ;]
-    LOGI("Navitgation v2 was received, Name = %c%c%c%c, lat = %d, lon = %d, alt = %d", incoming_point_v2.name[0], incoming_point_v2.name[1], incoming_point_v2.name[2], incoming_point_v2.name[3], incoming_point_v2.lat, incoming_point_v2.lon, incoming_point_v2.alt);
+    LOGI("Navitgation v2 was received, Name = %c%c%c%c, type = %d, lat = %d, lon = %d, alt = %d", incoming_point_v2.name[0], incoming_point_v2.name[1], incoming_point_v2.name[2], incoming_point_v2.name[3], incoming_point_v2.point_type, incoming_point_v2.lon, incoming_point_v2.alt);
     navigation_add_point(incoming_point_v2.name, strlen(incoming_point_v2.name), incoming_point_v2.lat, incoming_point_v2.lon, incoming_point_v2.alt, incoming_point_v2.point_type);
   }
 
