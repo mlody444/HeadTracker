@@ -258,6 +258,17 @@ void navigation_add_point(char name[], uint8_t size, int32_t lat, int32_t lon, i
     LOGI("Discarding new point \"%s\", no more space", name);
 }
 
+void navigation_add_point_v2(navi_data_v3_s point)
+{
+    uint8_t i = 0;
+
+    if (point.name == nullptr) {
+        LOGI("Error - navigation_add_point name nullptr");
+        return;
+    }
+
+}
+
 typedef struct __attribute__((__packed__))  {
     char name[16];
     int32_t lat;
@@ -286,6 +297,11 @@ void navigation_Thread()
     navigation_add_point(Castle.name,  strlen(Castle.name),  Castle.lat,  Castle.lon,  Castle.alt,  Castle.point_type);
     navigation_add_point(Post.name,    strlen(Post.name),    Post.lat,    Post.lon,    Post.alt,    Post.point_type);
     navigation_add_point(MyPhone.name, strlen(MyPhone.name), MyPhone.lat, MyPhone.lon, MyPhone.alt, MyPhone.point_type);
+
+    rt_sleep_ms(3500);
+    LOGI("Sizeof(point_data) = %d", sizeof(point_data));
+    LOGI("Sizeof(navi_data_v3_s) = %d", sizeof(navi_data_v3_s));
+
 
     while (1) {
         update_counter = UPDATE_MAX;

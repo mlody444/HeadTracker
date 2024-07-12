@@ -16,4 +16,20 @@ enum Point_Type_T {
     POINT_TYPE_MAX
 };
 
+typedef struct __attribute__((__packed__)) {
+    uint16_t id : 12;
+    uint16_t always_show : 1;
+    uint16_t reserved : 3;
+} point_data;
+
+typedef struct __attribute__((__packed__))  {
+    char name[16];
+    int32_t lat;
+    int32_t lon;
+    int16_t alt;
+    point_data point;  // 12bits ID, 4 bits for flag, 0 - always show,
+    uint8_t ttl;  // time to life (0xFF - unlimited)
+    enum Point_Type_T point_type;
+} navi_data_v3_s;
+
 #endif /* COMMON_AR_HH */
