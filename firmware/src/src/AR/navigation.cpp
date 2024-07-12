@@ -39,6 +39,9 @@
 #define EARTH_R         6371000.0
 #define NAME_MAX    16
 
+#define DEL_LAT 18000000
+#define DEL_LON 9000000
+
 struct NAV_CORDS {
     float lat;
     float lon;
@@ -49,6 +52,7 @@ struct NAV_POINT {
     char name[NAME_MAX];
     struct NAV_CORDS cords;
     bool update;
+    enum Point_Type_T point_type;
 };
 
 struct NAV_POINT nav_points[POINTS_MAX];
@@ -153,7 +157,7 @@ static void update_point(uint32_t point)
     azimuth = calculate_azimuth(lat1, lon1, lat2, lon2) * RAD_TO_DEG;
     pitch = calculate_pitch(distance, alt_diff);
 
-    position_add_point(nav_points[point].name, strlen(nav_points[point].name), azimuth, pitch, distance);
+    position_add_point(nav_points[point].name, strlen(nav_points[point].name), azimuth, pitch, distance, nav_points[point].point_type);
     nav_points[point].update = false;
 }
 
@@ -195,7 +199,7 @@ void navigation_add_point(char name[], uint8_t size, int32_t lat, int32_t lon, i
 
     if (name[0] == '\0' || name[0] == ' ' ||
         (name[0] == 'M' && name[1] == 'y')) {
-        if (lat == (int32_t)0xFFFFFFFF || lon == (int32_t)0xFFFFFFFF) {
+        if (lat > DEL_LAT || lon > DEL_LON) {
             LOGI("Deleting all points & self position");
             self_pos.lat = INFINITY;
             self_pos.lon = INFINITY;
@@ -216,7 +220,7 @@ void navigation_add_point(char name[], uint8_t size, int32_t lat, int32_t lon, i
         if (0 == strncmp(name, nav_points[i].name, size) &&
             size == strlen(nav_points[i].name))
         {
-            if (lat == (int32_t)0xFFFFFFFF || lon == (int32_t)0xFFFFFFFF) {
+            if (lat > DEL_LAT || lon > DEL_LON) {
                 LOGI("Deleting point = %d, name = %c%c%c%c", i, name[0], name[1], name[2], name[3]);
                 del_point(i);
                 return;
@@ -226,12 +230,13 @@ void navigation_add_point(char name[], uint8_t size, int32_t lat, int32_t lon, i
                 nav_points[i].cords.lon = (DEG_TO_RAD * lon) / DIGITS;
                 nav_points[i].cords.alt = alt;
                 nav_points[i].update = true;
+                nav_points[i].point_type = point_type;
                 return;
             }
         }
     }
 
-    if (lat == (int32_t)0xFFFFFFFF || lon == (int32_t)0xFFFFFFFF) {
+    if (lat > DEL_LAT || lon > DEL_LON) {
         LOGI("ERR - there is no point to delete: %c%c%c%c", name[0], name[1], name[2], name[3]);
         return;
     }
@@ -245,7 +250,7 @@ void navigation_add_point(char name[], uint8_t size, int32_t lat, int32_t lon, i
             nav_points[i].cords.alt = alt;
             strncpy(nav_points[i].name, name, size);
             nav_points[i].update = true;
-
+            nav_points[i].point_type = point_type;
             return;
         }
     }
@@ -253,11 +258,34 @@ void navigation_add_point(char name[], uint8_t size, int32_t lat, int32_t lon, i
     LOGI("Discarding new point \"%s\", no more space", name);
 }
 
+typedef struct __attribute__((__packed__))  {
+    char name[16];
+    int32_t lat;
+    int32_t lon;
+    int32_t alt;
+    enum Point_Type_T point_type;
+} navi_data_v2_s;
+
+// Stadion, Cinema, castle, post
+
+navi_data_v2_s Stadion = {"Stadion", 4981934, 2404813, 289, DIAMOND_C};
+navi_data_v2_s Cinema  = {"Cinema",  4982104, 2402509, 280, CIRCLE};
+navi_data_v2_s Castle  = {"Castle",  4983289, 2402436, 300, TRIANGLE};
+navi_data_v2_s Post    = {"Post",    4983775, 2402384, 260, X_SHAPE};
+
+navi_data_v2_s MyPhone = {"My",      4983220, 2404215, 260, DIAMOND};
+
 void navigation_Thread()
 {
     uint32_t update_counter = 0;
     uint32_t pos = 0;
     uint32_t i = 0;
+
+    navigation_add_point(Stadion.name, strlen(Stadion.name), Stadion.lat, Stadion.lon, Stadion.alt, Stadion.point_type);
+    navigation_add_point(Cinema.name,  strlen(Cinema.name),  Cinema.lat,  Cinema.lon,  Cinema.alt,  Cinema.point_type);
+    navigation_add_point(Castle.name,  strlen(Castle.name),  Castle.lat,  Castle.lon,  Castle.alt,  Castle.point_type);
+    navigation_add_point(Post.name,    strlen(Post.name),    Post.lat,    Post.lon,    Post.alt,    Post.point_type);
+    navigation_add_point(MyPhone.name, strlen(MyPhone.name), MyPhone.lat, MyPhone.lon, MyPhone.alt, MyPhone.point_type);
 
     while (1) {
         update_counter = UPDATE_MAX;

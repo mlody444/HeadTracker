@@ -363,7 +363,7 @@ void position_add_point(struct Position_Data_T point_data)
   LOGI("Out of memory");
 }
 
-void position_add_point(char name[], uint8_t length, float azimuth, float pitch, uint32_t distance)
+void position_add_point(char name[], uint8_t length, float azimuth, float pitch, uint32_t distance, enum Point_Type_T point_type)
 {
   struct Position_Data_T point_data = {0};
   if (length == 0 || length > 15) {
@@ -374,7 +374,7 @@ void position_add_point(char name[], uint8_t length, float azimuth, float pitch,
   point_data.distance = distance;
   point_data.azimuth = azimuth;
   point_data.pitch = pitch;
-  point_data.point_type = DIAMOND;
+  point_data.point_type = point_type;
 
   position_add_point(point_data);
 }
