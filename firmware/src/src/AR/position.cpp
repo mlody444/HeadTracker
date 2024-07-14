@@ -106,6 +106,7 @@ static struct Point_T calculate_cordinates(struct Head_Track_T head, float azimu
 static void process_point(struct Head_Track_T head, struct Position_Data_T position, bool adjust_roll);
 static void process_all_points(struct Head_Track_T head, struct Position_Data_T positions[], uint32_t size, bool adjust_roll);
 static void process_compass(struct Head_Track_T head, struct Compass_Data_T compass_array[], uint8_t size, bool adjust_roll);
+static uint32_t search_for_id(uint16_t id);
 
 static bool cordinates_within_frame(struct Head_Track_T head, float azimuth, float pitch)
 {
@@ -307,6 +308,18 @@ static void process_compass(struct Head_Track_T head, struct Compass_Data_T comp
   }
 }
 
+static uint32_t search_for_id(uint16_t id)
+{
+    uint32_t i = 0;
+    for (i = 0; i < POINTS_MAX; i++) {
+        if (positions_memory[i].pos.id == id) {
+            return i;
+        }
+    }
+
+    return POINTS_MAX;
+}
+
 void position_set_pitch(float tilt_new)
 {
   head_track.pitch = tilt_new * -1.0;
@@ -330,14 +343,19 @@ void position_add_point(struct Position_Data_T point_data)
   uint32_t i = 0;
 
   if (point_data.name[0] == '\0') {
-    LOGI("Adding point with empyt name - discarding");
+    LOGI("Adding point with empty name - discarding");
+    return;
+  }
+
+  if (point_data.pos.id == NAV_ID_EMPTY) {
+    LOGI("Adding point with empty ID - discarding");
     return;
   }
 
   if (point_data.azimuth == 0xffffffff || point_data.pitch == 0xffffffff ||
       point_data.distance == 0xffffffff || point_data.distance == 0) {
     LOGI("Deleting point %s", point_data.name);
-    position_del_point(point_data.name, strlen(point_data.name));
+    position_del_point((uint16_t)point_data.pos.id);
     return;
   }
 
@@ -379,15 +397,12 @@ void position_add_point(char name[], uint8_t length, float azimuth, float pitch,
   position_add_point(point_data);
 }
 
-void position_del_point(char *name, uint8_t size)
+void position_del_point(uint16_t id)
 {
   uint8_t i = 0;
-  if (size > MAX_NAME_LENGTH) {
-    return;
-  }
 
   for (i = 0; i < POINTS_MAX; i++) {
-    if (0 == strncmp(name, positions_memory[i].name, size)) {
+    if (positions_memory[i].pos.id == id) {
       memset(&positions_memory[i], 0, sizeof(positions_memory[i]));
     }
   }

@@ -2,6 +2,7 @@
 #define COMMON_AR_HH
 
 #define PI 3.1415926535897932384626433f
+#define NAV_ID_EMPTY 0xFFF
 
 enum Point_Type_T {
     DIAMOND    = 0,
@@ -27,9 +28,24 @@ typedef struct __attribute__((__packed__))  {
     int32_t lat;
     int32_t lon;
     int16_t alt;
-    point_data point;  // 12bits ID, 4 bits for flag, 0 - always show,
+    point_data nav;  // 12bits ID, 4 bits for flag, 0 - always show,
     uint8_t ttl;  // time to life (0xFF - unlimited)
     enum Point_Type_T point_type;
+} navi_data_v3_raw_s;
+
+struct NAV_CORDS {
+    float lat;
+    float lon;
+    int32_t alt;
+};
+
+typedef struct __attribute__((__packed__))  {
+    char name[16];
+    struct NAV_CORDS cords;
+    point_data nav;  // 12bits ID, 4 bits for flag, 0 - always show,
+    uint8_t ttl;  // time to life (0xFF - unlimited)
+    enum Point_Type_T point_type;
+    bool update;
 } navi_data_v3_s;
 
 #endif /* COMMON_AR_HH */
