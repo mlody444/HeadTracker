@@ -3,6 +3,7 @@
 
 #define PI 3.1415926535897932384626433f
 #define NAV_ID_EMPTY 0xFFF
+#define NAME_MAX 16
 
 enum Point_Type_T {
     DIAMOND    = 0,
@@ -24,7 +25,7 @@ typedef struct __attribute__((__packed__)) {
 } point_data;
 
 typedef struct __attribute__((__packed__))  {
-    char name[16];
+    char name[NAME_MAX];
     int32_t lat;
     int32_t lon;
     int16_t alt;
@@ -40,7 +41,7 @@ struct NAV_CORDS {
 };
 
 typedef struct __attribute__((__packed__))  {
-    char name[16];
+    char name[NAME_MAX];
     struct NAV_CORDS cords;
     point_data nav;  // 12bits ID, 4 bits for flag, 0 - always show,
     uint8_t ttl;  // time to life (0xFF - unlimited)

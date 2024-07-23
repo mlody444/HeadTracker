@@ -315,6 +315,15 @@ void navigation_del_pos(uint16_t id)
     nav_points_v2[i] = empty_point;
 }
 
+void navigation_del_all()
+{
+    uint32_t i = 0;
+
+    for (i = 0; i < POINTS_MAX; i++) {
+        nav_points_v2[i] = empty_point;
+    }
+}
+
 typedef struct __attribute__((__packed__))  {
     char name[16];
     int32_t lat;
