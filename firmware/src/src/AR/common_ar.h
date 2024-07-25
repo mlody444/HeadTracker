@@ -4,6 +4,7 @@
 #define PI 3.1415926535897932384626433f
 #define NAV_ID_EMPTY 0xFFF
 #define NAME_MAX 16
+#define DIGITS   100000.0
 
 enum Point_Type_T {
     DIAMOND    = 0,
