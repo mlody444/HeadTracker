@@ -2,7 +2,7 @@
 #define COMMON_AR_HH
 
 #define PI 3.1415926535897932384626433f
-#define NAV_ID_EMPTY 0xFFF
+#define ID_EMPTY 0xFFF
 #define NAME_MAX 16
 #define DIGITS   100000.0
 
@@ -35,10 +35,16 @@ typedef struct __attribute__((__packed__))  {
     enum Point_Type_T point_type;
 } navi_data_v3_raw_s;
 
+struct NAV_CORDS_RAW {
+    int32_t lat;
+    int32_t lon;
+    int16_t alt;
+};
+
 struct NAV_CORDS {
     float lat;
     float lon;
-    int32_t alt;
+    int16_t alt;
 };
 
 typedef struct __attribute__((__packed__))  {

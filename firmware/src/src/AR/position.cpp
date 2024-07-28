@@ -98,6 +98,7 @@ struct Compass_Data_T compass_array[COMPASS_ELEMENTS] = {
 };
 
 struct Position_Data_T positions_memory[POINTS_MAX];
+struct Position_Data_T position_empty = {0.0, 0.0, 0, DIAMOND, "", {ID_EMPTY, 0, 0}};
 
 struct Head_Track_T head_track;
 
@@ -310,14 +311,14 @@ static void process_compass(struct Head_Track_T head, struct Compass_Data_T comp
 
 static uint32_t search_for_id(uint16_t id)
 {
-    uint32_t i = 0;
-    for (i = 0; i < POINTS_MAX; i++) {
-        if (positions_memory[i].pos.id == id) {
-            return i;
-        }
+  uint32_t i = 0;
+  for (i = 0; i < POINTS_MAX; i++) {
+    if (positions_memory[i].pos.id == id) {
+      return i;
     }
+  }
 
-    return POINTS_MAX;
+  return POINTS_MAX;
 }
 
 void position_set_pitch(float tilt_new)
@@ -347,11 +348,12 @@ void position_add_point(struct Position_Data_T point_data)
     return;
   }
 
-  if (point_data.pos.id == NAV_ID_EMPTY) {
+  if (point_data.pos.id == ID_EMPTY) {
     LOGI("Adding point with empty ID - discarding");
     return;
   }
 
+// this should be removed
   if (point_data.azimuth == 0xffffffff || point_data.pitch == 0xffffffff ||
       point_data.distance == 0xffffffff || point_data.distance == 0) {
     LOGI("Deleting point %s", point_data.name);
@@ -359,29 +361,20 @@ void position_add_point(struct Position_Data_T point_data)
     return;
   }
 
-  point_data.time_stamp = k_uptime_get_32();
-
-/* search for already added point */
-  for(i = 0; i < POINTS_MAX; i++) {
-    if (0 == strncmp(point_data.name, positions_memory[i].name, strlen(point_data.name))) { // BUG HERE - strlen first half of the name can be same
-      positions_memory[i] = point_data;
-      return;
-    }
+  i = search_for_id(point_data.pos.id); // check if point already exist
+  if (i == POINTS_MAX) {
+    i = search_for_id(ID_EMPTY); // check if there is memory for new point
   }
 
-/* search for empty space */
-  for (i = 0; i < POINTS_MAX; i++) {
-    if (positions_memory[i].name[0] == '\0')
-    {
-      positions_memory[i] = point_data;
-      return;
-    }
+  if (i < POINTS_MAX) {
+    positions_memory[i] = point_data;
+    return;
   }
 
-  LOGI("Out of memory");
+  LOGI("Error - position_add_point no space in memory");
 }
 
-void position_add_point(char name[], uint8_t length, float azimuth, float pitch, uint32_t distance, enum Point_Type_T point_type)
+void position_add_point(char name[], uint8_t length, float azimuth, float pitch, uint32_t distance, enum Point_Type_T point_type, point_data pos)
 {
   struct Position_Data_T point_data = {0};
   if (length == 0 || length > 15) {
@@ -393,6 +386,7 @@ void position_add_point(char name[], uint8_t length, float azimuth, float pitch,
   point_data.azimuth = azimuth;
   point_data.pitch = pitch;
   point_data.point_type = point_type;
+  point_data.pos = pos;
 
   position_add_point(point_data);
 }
@@ -401,93 +395,28 @@ void position_del_point(uint16_t id)
 {
   uint8_t i = 0;
 
-  for (i = 0; i < POINTS_MAX; i++) {
-    if (positions_memory[i].pos.id == id) {
-      memset(&positions_memory[i], 0, sizeof(positions_memory[i]));
-    }
+  i = search_for_id(id);
+
+  if (i >= POINTS_MAX) {
+    LOGI("Warning position_del_point there is no point with ID = %d", id);
+    return;
   }
+
+  LOGI("position_del_point id = %d, i = %d", id, i);
+  positions_memory[i] = position_empty;
 }
-
-// static void set_point_name(struct Position_Data_T *point, const char* name)
-// {
-//   uint8_t length = strlen(name);
-//   if (length >= 15) {
-//     length = 15;
-//   }
-
-//   point->name[length] = 0;
-
-//   memcpy(point->name, name, length);
-// }
 
 void position_Thread()
 {
 /* waiting until log functions initialize */
-  // rt_sleep_ms(3000);
+  oled_init(3000);
   LOGI("Position thread started");
 
-  oled_init(3000);
+  uint32_t i = 0;
 
-/* generate initial points to be displayed */
-  struct Position_Data_T point_data;
-  // point_data.azimuth = 359.0;
-  // point_data.pitch = 10.0;
-  // point_data.distance = 23;
-  // set_point_name(&point_data, "Roman");
-  // point_data.point_type = DIAMOND;
-  // position_add_point(point_data);
-
-  // point_data.azimuth = 5.0;
-  // point_data.pitch = 5.0;
-  // point_data.distance = 12;
-  // set_point_name(&point_data, "Seria");
-  // point_data.point_type = DIAMOND;
-  // position_add_point(point_data);
-
-  // point_data.azimuth = 30.0;
-  // point_data.pitch = 6.0;
-  // point_data.distance = 83;
-  // set_point_name(&point_data, "Oleq");
-  // point_data.point_type = DIAMOND;
-
-  // position_add_point(point_data);
-  // point_data.azimuth = 33.0;
-  // point_data.pitch = 10.0;
-  // point_data.distance = 102;
-  // set_point_name(&point_data, "Marko");
-  // point_data.point_type = DIAMOND;
-  // position_add_point(point_data);
-
-  // position_add_point(point_data);
-  // point_data.azimuth = 350.0;
-  // point_data.pitch = 6.0;
-  // point_data.distance = 47;
-  // set_point_name(&point_data, "Eugein");
-  // point_data.point_type = DIAMOND;
-  // position_add_point(point_data);
-
-  // position_add_point(point_data);
-  // point_data.azimuth = 310.0;
-  // point_data.pitch = 5.0;
-  // point_data.distance = 2460;
-  // set_point_name(&point_data, "HQ");
-  // point_data.point_type = TRIANGLE;
-  // position_add_point(point_data);
-
-  // position_add_point(point_data);
-  // point_data.azimuth = 345.0;
-  // point_data.pitch = 0.0;
-  // point_data.distance = 60;
-  // set_point_name(&point_data, "RANGER");
-  // point_data.point_type = SQUARE;
-  // position_add_point(point_data);
-
-// DEBUG START Demo to be removed
-  uint32_t counter1 = 0;
-  uint32_t counter2 = 0;
-  float azimuth = -1.0;
-  int32_t dist = 13;
-// DEBUG END Demo to be removed
+  for(i = 0; i < POINTS_MAX; i++) {
+    positions_memory[i].pos.id = ID_EMPTY;
+  }
 
   while (1) {
     oled_clean();
@@ -498,37 +427,6 @@ void position_Thread()
     oled_write_pixel(63, 31); // middle point dot - helpfull for development
 
     oled_update();
-
-// DEBUG START Demo to be removed
-    if (counter1 == 40) {
-      // LOGI("Updating counter");
-      counter1 = 0;
-      counter2++;
-      point_data.azimuth += azimuth;
-      point_data.distance += dist;
-      // position_add_point(point_data);
-    }
-
-    if (counter2 == 15) {
-      counter2++;
-      // LOGI("counter2 == 15");
-      azimuth = 1.0;
-      dist = -13;
-      // position_add_point(point_data);
-    }
-
-    if (counter2 == 30) {
-      // LOGI("counter2 == 30");
-      counter2 = 0;
-      point_data.azimuth = 345.0;
-      point_data.distance = 60;
-      dist = 13;
-      azimuth = -1.0;
-      // position_add_point(point_data);
-    }
-
-    counter1++;
-// DEBUG END Demo to be removed
 
     rt_sleep_ms(25);
   }
