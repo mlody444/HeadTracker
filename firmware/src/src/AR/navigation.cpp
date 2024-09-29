@@ -140,17 +140,17 @@ static void update_point(uint32_t point)
     float pitch = 0.0;
 
     if (point >= POINTS_MAX) {
-        LOGI("ERR - nav update point - point out of range: %d", point);
+        error("Point out of range: %d", point);
         return;
     }
 
     if (nav_points_v2[point].name[0] == '\0') {
-        LOGI("ERR - nav update point - missing point: %d", point);
+        error("Missing point: %d", point);
         return;
     }
 
     if (self_position_available() == false) {
-        LOGI("ERR - nav update point - missing self position");
+        error("Missing self position");
         return;
     }
 
@@ -169,7 +169,7 @@ static void update_point(uint32_t point)
 static void del_point(uint32_t point)
 {
     if (point >= POINTS_MAX) {
-        LOGI("ERR - nav del_point - point out of range: %d", point);
+        error("Point out of range: %d", point);
     }
 
     position_del_point((uint16_t)nav_points_v2[point].nav.id);
@@ -228,41 +228,41 @@ void navigation_add_point_v2(navi_data_v3_s *point)
     uint16_t i = 0;
 
     if (point == nullptr) {
-        LOGI("Error - navigation_add_point_v2 point is nullptr");
+        error("Point is nullptr");
         return;
     }
 
     if (point->name[0] == '\0') {
-        LOGI("Error - navigation_add_point_v2 point name is empty");
+        error("Point name is empty");
         return;
     }
 
     if (point->cords.lat > DEL_LAT || point->cords.lat < -DEL_LAT) {
-        LOGI("Error - navigation_add_point_v2 lat is incorrect");
+        error("Latitude is incorrect");
         return;
     }
 
     if (point->cords.lon > DEL_LON || point->cords.lon < -DEL_LON) {
-        LOGI("Error - navigation_add_point_v2 lon is incorrect");
+        error("Longitude is incorrect");
         return;
     }
 
     if (point->cords.alt > 8000 || point->cords.alt < -1000) {
-        LOGI("Error - navigation_add_point_v2 alt is incorrect");
+        error("Altitude is incorrect");
         return;
     }
 
     if (point->nav.id == 0 || point->nav.id == 0xFFF) {
-        LOGI("Error - navigation_add_point_v2 ID is incorrect");
+        error("ID is incorrect");
         return;
     }
 
     if (point->point_type >= POINT_TYPE_MAX) {
-        LOGI("Error - navigation_add_point_v2 ID is incorrect");
+        error("Point type is incorrect");
         return;
     }
 
-    LOGI("Adding point = %c%c%c%c, lat = %d, lon = %d, alt = %d", point->name[0], point->name[1], point->name[2], point->name[3],
+    debug("Adding point = %c%c%c%c, lat = %d, lon = %d, alt = %d", point->name[0], point->name[1], point->name[2], point->name[3],
                                                                   (int32_t)(point->cords.lat * RAD_TO_DEG * 100.0),
                                                                   (int32_t)(point->cords.lon * RAD_TO_DEG * 100.0),
                                                                   point->cords.alt);
@@ -277,23 +277,23 @@ void navigation_add_point_v2(navi_data_v3_s *point)
         return;
     }
 
-    LOGI("Error - navigation_add_point_v2 no space in memory");
+    warning("No space in memory point \"%s\" not added", point->name);
 }
 
 void navigation_update_myself(NAV_CORDS_RAW myself_raw)
 {
     if (myself_raw.lat > DEL_LAT || myself_raw.lat < -DEL_LAT) {
-        LOGI("Error - navigation_update_myself lat is incorrect");
+        error("Latitude is incorrect");
         return;
     }
 
     if (myself_raw.lon > DEL_LON || myself_raw.lon < -DEL_LON) {
-        LOGI("Error - navigation_update_myself lon is incorrect");
+        error("Longitude is incorrect");
         return;
     }
 
     if (myself_raw.alt > 8000 || myself_raw.alt < -1000) {
-        LOGI("Error - navigation_update_myself alt is incorrect");
+        error("Altitude is incorrect");
         return;
     }
 
@@ -315,11 +315,11 @@ void navigation_del_pos(uint16_t id)
     i = search_for_id(id);
 
     if (i == POINTS_MAX) {
-        LOGI("WARNING - navigation_del_pos there is not point with ID = %d", id);
+        warning("There is no point with ID = %d", id);
         return;
     }
 
-    LOGI("navigation_del_pos id = %d, i = %d", id, i);
+    debug("Deleting ID = %d, i = %d", id, i);
     position_del_point(id);
     nav_points_v2[i] = empty_point;
 }
@@ -328,6 +328,9 @@ void navigation_del_all()
 {
     navigation_del_pos(ID_EMPTY);
 }
+
+navi_data_v3_s test_point;
+navi_data_v3_s *test_point_ptr;
 
 void navigation_Thread()
 {
@@ -338,6 +341,9 @@ void navigation_Thread()
 
     init_nav_points_v2();
     rt_sleep_ms(3500);
+
+    test_point_ptr = &test_point;
+    warning("No space in memory point \"%s\" not added", test_point_ptr->name);
 
     while (1) {
         update_counter = UPDATE_MAX;

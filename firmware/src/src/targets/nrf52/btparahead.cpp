@@ -246,6 +246,18 @@ struct PACKAGED {
 #include "AR/navigation.h"
 #include "AR/common_ar.h"
 
+static void raw_to_processed(navi_data_v3_raw_s *incoming_friendly, navi_data_v3_s *processed_friendly)
+{
+  memcpy(processed_friendly->name, incoming_friendly->name, NAME_MAX);
+  processed_friendly->cords.lat = (DEG_TO_RAD * incoming_friendly->lat) / DIGITS;
+  processed_friendly->cords.lon = (DEG_TO_RAD * incoming_friendly->lon) / DIGITS;
+  processed_friendly->cords.alt = incoming_friendly->alt;
+  processed_friendly->nav = incoming_friendly->nav;
+  processed_friendly->ttl = incoming_friendly->ttl;
+  processed_friendly->point_type = incoming_friendly->point_type;
+  processed_friendly->update = true;
+}
+
 static ssize_t write_friendly(struct bt_conn *conn, const struct bt_gatt_attr *attr, const void *buf, uint16_t len, uint16_t offset, uint8_t flags)
 {
   // Just got some data, here you could split it up back into a struct
@@ -259,16 +271,7 @@ static ssize_t write_friendly(struct bt_conn *conn, const struct bt_gatt_attr *a
   }
 
   memcpy(&incoming_friendly, buf, len);
-
-  memcpy(processed_friendly.name, incoming_friendly.name, NAME_MAX);
-  processed_friendly.cords.lat = (DEG_TO_RAD * incoming_friendly.lat) / DIGITS;
-  processed_friendly.cords.lon = (DEG_TO_RAD * incoming_friendly.lon) / DIGITS;
-  processed_friendly.cords.alt = incoming_friendly.alt;
-  processed_friendly.nav = incoming_friendly.nav;
-  processed_friendly.ttl = incoming_friendly.ttl;
-  processed_friendly.point_type = incoming_friendly.point_type;
-  processed_friendly.update = true;
-
+  raw_to_processed(&incoming_friendly, &processed_friendly);
   navigation_add_point_v2(&processed_friendly);
 
   return len;
@@ -278,7 +281,22 @@ static ssize_t write_friendlys(struct bt_conn *conn, const struct bt_gatt_attr *
 {
   // Just got some data, here you could split it up back into a struct
   navi_data_v3_raw_s incoming_friendly;
-  LOGI("NOT SUPPORTED YET Receive friendlys length = %d", len);
+  navi_data_v3_s processed_friendly;
+  uint8_t i = 0;
+  LOGI("Receive friendlys length = %d", len);
+
+  if (len % sizeof(navi_data_v3_raw_s) != 0) {
+    LOGI("ERROR write_friendlys incorrect length");
+    return len;
+  }
+
+  i = len / sizeof(navi_data_v3_raw_s);
+
+  for (i = 0; i < len / sizeof(navi_data_v3_raw_s); i++) {
+    memcpy(&incoming_friendly, buf + (i * sizeof(navi_data_v3_raw_s)), sizeof(navi_data_v3_raw_s));
+    raw_to_processed(&incoming_friendly, &processed_friendly);
+    navigation_add_point_v2(&processed_friendly);
+  }
 
   return len;
 }

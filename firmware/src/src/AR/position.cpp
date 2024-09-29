@@ -344,19 +344,19 @@ void position_add_point(struct Position_Data_T point_data)
   uint32_t i = 0;
 
   if (point_data.name[0] == '\0') {
-    LOGI("Adding point with empty name - discarding");
+    warning("Empty name - discarding");
     return;
   }
 
   if (point_data.pos.id == ID_EMPTY) {
-    LOGI("Adding point with empty ID - discarding");
+    warning("Empty ID - discarding");
     return;
   }
 
 // this should be removed
   if (point_data.azimuth == 0xffffffff || point_data.pitch == 0xffffffff ||
       point_data.distance == 0xffffffff || point_data.distance == 0) {
-    LOGI("Deleting point %s", point_data.name);
+    debug("Deleting point %s", point_data.name);
     position_del_point((uint16_t)point_data.pos.id);
     return;
   }
@@ -371,16 +371,17 @@ void position_add_point(struct Position_Data_T point_data)
     return;
   }
 
-  LOGI("Error - position_add_point no space in memory");
+  warning("No space in memory point \"%s\" not added", point_data.name);
 }
 
 void position_add_point(char name[], uint8_t length, float azimuth, float pitch, uint32_t distance, enum Point_Type_T point_type, point_data pos)
 {
   struct Position_Data_T point_data = {0};
-  if (length == 0 || length > 15) {
-    LOGI("position_add_point incorrect length = %d", length);
+  if (length == 0 || length >= MAX_NAME_LENGTH - 1) {
+    error("Incorrect name length = %d", length);
     return;
   }
+  memset(point_data.name, 0, MAX_NAME_LENGTH);
   memcpy(point_data.name, name, length);
   point_data.distance = distance;
   point_data.azimuth = azimuth;
@@ -398,11 +399,11 @@ void position_del_point(uint16_t id)
   i = search_for_id(id);
 
   if (i >= POINTS_MAX) {
-    LOGI("Warning position_del_point there is no point with ID = %d", id);
+    warning("There is no point with ID = %d, deleting abborted", id);
     return;
   }
 
-  LOGI("position_del_point id = %d, i = %d", id, i);
+  debug("deleting point id = %d, i = %d", id, i);
   positions_memory[i] = position_empty;
 }
 

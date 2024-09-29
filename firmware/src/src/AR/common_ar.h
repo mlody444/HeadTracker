@@ -6,6 +6,28 @@
 #define NAME_MAX 16
 #define DIGITS   100000.0
 
+#define DEB
+#define ERR
+#define WAR
+
+#ifdef DEB
+#define debug(text, ...) LOGI("DEBUG %s %s() line:%d:\r\n" text, __FILE__, __func__, __LINE__ __VA_OPT__(,)__VA_ARGS__)
+#else
+#define debug(...)
+#endif // DEB
+
+#ifdef ERR
+#define error(text, ...) LOGI("ERROR %s %s() line:%d:\r\n" text, __FILE__, __func__, __LINE__ __VA_OPT__(,)__VA_ARGS__)
+#else
+#define error(...)
+#endif // ERR
+
+#ifdef WAR
+#define warning(text, ...) LOGI("WARNING %s %s() line:%d:\r\n" text, __FILE__, __func__, __LINE__ __VA_OPT__(,)__VA_ARGS__)
+#else
+#define warning(...)
+#endif // WAR
+
 enum Point_Type_T {
     DIAMOND    = 0,
     DIAMOND_C  = 1, // cropped
