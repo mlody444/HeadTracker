@@ -37,7 +37,9 @@
       "functional": "cpp",
       "log.h": "c",
       "xstring": "cpp",
-      "cmath": "cpp"
+      "cmath": "cpp",
+      "random": "cpp",
+      "typeinfo": "cpp"
     },
   },
   "launch": {
