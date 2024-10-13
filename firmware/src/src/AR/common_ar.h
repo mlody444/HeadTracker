@@ -6,7 +6,7 @@
 #define NAME_MAX 16
 #define DIGITS   100000.0
 
-#define DEB
+// #define DEB
 #define ERR
 #define WAR
 
@@ -77,5 +77,7 @@ typedef struct __attribute__((__packed__))  {
     enum Point_Type_T point_type;
     bool update;
 } navi_data_v3_s;
+
+void raw_to_processed(navi_data_v3_raw_s *incoming_friendly, navi_data_v3_s *processed_friendly);
 
 #endif /* COMMON_AR_HH */

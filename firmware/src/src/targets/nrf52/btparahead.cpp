@@ -37,7 +37,7 @@ void pushByte(uint8_t byte);
 
 static void disconnected(struct bt_conn *conn, uint8_t reason);
 static void connected(struct bt_conn *conn, uint8_t err);
-static ssize_t write_friendly(struct bt_conn *conn, const struct bt_gatt_attr *attr, const void *buf,
+ssize_t write_friendly(struct bt_conn *conn, const struct bt_gatt_attr *attr, const void *buf,
                         uint16_t len, uint16_t offset, uint8_t flags);
 static ssize_t write_friendlys(struct bt_conn *conn, const struct bt_gatt_attr *attr, const void *buf,
                         uint16_t len, uint16_t offset, uint8_t flags);
@@ -246,7 +246,45 @@ struct PACKAGED {
 #include "AR/navigation.h"
 #include "AR/common_ar.h"
 
-static void raw_to_processed(navi_data_v3_raw_s *incoming_friendly, navi_data_v3_s *processed_friendly)
+static void printf_raw_data(navi_data_v3_raw_s raw_data)
+{
+  debug("name= %s\r\n"
+        "lat = %d\r\n"
+        "lon = %d\r\n"
+        "alt = %d\r\n"
+        "id  = %d\r\n"
+        "ttl = %d\r\n"
+        "typ = %d",
+        raw_data.name,
+        raw_data.lat,
+        raw_data.lon,
+        raw_data.alt,
+        raw_data.nav.id,
+        raw_data.ttl,
+        raw_data.point_type);
+}
+
+static void printf_raw_data_simple(navi_data_v3_raw_s raw_data)
+{
+  debug("name= %c%c\r\n"
+        "lat = %d\r\n"
+        "lon = %d\r\n"
+        // "alt = %d\r\n"
+        // "id  = %d\r\n"
+        // "ttl = %d\r\n"
+        // "typ = %d"
+        ,
+        raw_data.name[0], raw_data.name[1],
+        raw_data.lat,
+        raw_data.lon
+        // raw_data.alt,
+        // raw_data.nav.id,
+        // raw_data.ttl,
+        // raw_data.point_type
+        );
+}
+
+void raw_to_processed(navi_data_v3_raw_s *incoming_friendly, navi_data_v3_s *processed_friendly)
 {
   memcpy(processed_friendly->name, incoming_friendly->name, NAME_MAX);
   processed_friendly->cords.lat = (DEG_TO_RAD * incoming_friendly->lat) / DIGITS;
@@ -258,7 +296,7 @@ static void raw_to_processed(navi_data_v3_raw_s *incoming_friendly, navi_data_v3
   processed_friendly->update = true;
 }
 
-static ssize_t write_friendly(struct bt_conn *conn, const struct bt_gatt_attr *attr, const void *buf, uint16_t len, uint16_t offset, uint8_t flags)
+ssize_t write_friendly(struct bt_conn *conn, const struct bt_gatt_attr *attr, const void *buf, uint16_t len, uint16_t offset, uint8_t flags)
 {
   navi_data_v3_raw_s incoming_friendly;
   navi_data_v3_s processed_friendly;
@@ -270,6 +308,7 @@ static ssize_t write_friendly(struct bt_conn *conn, const struct bt_gatt_attr *a
   }
 
   memcpy(&incoming_friendly, buf, len);
+  printf_raw_data(incoming_friendly);
   raw_to_processed(&incoming_friendly, &processed_friendly);
   navigation_add_point_v2(&processed_friendly);
 
@@ -342,6 +381,7 @@ static ssize_t write_myself(struct bt_conn *conn, const struct bt_gatt_attr *att
 
   memcpy(&myself, buf, len);
 
+  LOGI("Myself lat=%d, lon=%d, alt=%d", myself.lat, myself.lon, myself.alt);
   navigation_update_myself(myself);
 
   return len;

@@ -91,6 +91,7 @@ static void update_all()   // clear flag for all
 
 static float calculate_azimuth(float lat_self, float lon_self, float lat_point, float lon_point)
 {
+    LOGI("azimuth lat_self = %.6f, lon_self = %.6f, lat_point = %.6f, lon_point = %.6f", lat_self, lon_self, lat_point, lon_point);
     if (lat_self == lat_point && lon_self == lon_point) return 0;
     if (lon_self == lon_point){
         if (lat_self > lat_point)
@@ -112,6 +113,7 @@ static float calculate_azimuth(float lat_self, float lon_self, float lat_point, 
 
 static float calculate_distance(float lat_self, float lon_self, float lat_point, float lon_point)
 {
+    LOGI("distance lat_self = %.6f, lon_self = %.6f, lat_point = %.6f, lon_point = %.6f", lat_self, lon_self, lat_point, lon_point);
     float a = sin((lat_point - lat_self) / 2.0);
     float b = sin((lon_point - lon_self) / 2.0);
     float c = a * a + cos(lat_self) * cos(lat_point) * b * b;
@@ -125,19 +127,22 @@ static float calculate_pitch(uint32_t distance, int32_t alt_diff)
         return 0.0;
     }
 
-    return ((tan((float)alt_diff / (float)distance)) * RAD_TO_DEG);
+    return ((atan((float)alt_diff / (float)distance)) * RAD_TO_DEG);
 }
+
+uint32_t distance = 0;
+float azimuth = 0.0;
+float pitch = 0.0;
+int32_t alt_diff;
 
 static void update_point(uint32_t point)
 {
-    int32_t alt_diff = nav_points_v2[point].cords.alt - self_pos.alt;
+    alt_diff = nav_points_v2[point].cords.alt - self_pos.alt;
     float lat2 = nav_points_v2[point].cords.lat;
     float lon2 = nav_points_v2[point].cords.lon;
     float lat1 = self_pos.lat;
     float lon1 = self_pos.lon;
-    uint32_t distance = 0;
-    float azimuth = 0.0;
-    float pitch = 0.0;
+
 
     if (point >= POINTS_MAX) {
         error("Point out of range: %d", point);
@@ -161,6 +166,11 @@ static void update_point(uint32_t point)
     distance = (uint32_t)(calculate_distance(lat1, lon1, lat2, lon2) * EARTH_R);
     azimuth = calculate_azimuth(lat1, lon1, lat2, lon2) * RAD_TO_DEG;
     pitch = calculate_pitch(distance, alt_diff);
+
+    LOGI("Pitch = %d, dist = %d, alt = %d", (uint32_t)pitch, distance, alt_diff);
+
+    LOGI("Updating");
+    LOGI("Updating: distance =%d, alt =%d, azimuth =%d, pitch =%d", distance, alt_diff, (uint32_t)azimuth, (uint32_t)pitch);
 
     position_add_point(nav_points_v2[point].name,
                        strlen(nav_points_v2[point].name),
@@ -258,6 +268,8 @@ void navigation_add_point_v2(navi_data_v3_s *point)
                                                              (int32_t)(point->cords.lon * RAD_TO_DEG * 100.0),
                                                              point->cords.alt);
 
+    LOGI("Point added");
+
     i = search_for_id(point->nav.id); // check if point already exist
     if (i == POINTS_MAX) {
         i = search_for_id(ID_EMPTY); // check if there is memory for new point
@@ -288,9 +300,13 @@ void navigation_update_myself(NAV_CORDS_RAW myself_raw)
         return;
     }
 
+    LOGI("myself updated");
+
     self_pos.lat = (DEG_TO_RAD * myself_raw.lat) / DIGITS;
     self_pos.lon = (DEG_TO_RAD * myself_raw.lon) / DIGITS;
     self_pos.alt = myself_raw.alt;
+
+    update_all();
 }
 
 void navigation_del_pos(uint16_t id)
@@ -320,13 +336,40 @@ void navigation_del_all()
     navigation_del_pos(ID_EMPTY);
 }
 
+navi_data_v3_raw_s friendly_test = {"test",
+                                    5432295,
+                                    1861053,
+                                    48,
+                                    {2117, 1, 0},
+                                    30,
+                                    SQUARE};
+
+NAV_CORDS_RAW myself_test = {5432315, 1861089, 50};
+
+float test_pitch[10] = {0};
+
 void navigation_Thread()
 {
     uint32_t update_counter = 0;
     uint32_t pos = 0;
     uint32_t i = 0;
 
+    test_pitch[0] = calculate_pitch(32, 10);
+    test_pitch[1] = calculate_pitch(32, 0);
+    test_pitch[2] = calculate_pitch(32, -10);
+
     init_nav_points_v2();
+
+    rt_sleep_ms(5000);
+
+    friendly_test.alt = 48;
+    myself_test.alt = 50;
+
+    navi_data_v3_s processed_friendly;
+
+    navigation_update_myself(myself_test);
+    raw_to_processed(&friendly_test, &processed_friendly);
+    navigation_add_point_v2(&processed_friendly);
 
     while (1) {
         update_counter = UPDATE_MAX;

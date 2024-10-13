@@ -266,15 +266,20 @@ static void process_point(struct Head_Track_T head, struct Position_Data_T posit
     oled_draw_x_shape(point.x, point.y, false);
     break;
   }
+  LOGI("Point X = %d, Point Y = %d", point.x, point.y);
   oled_write_text(point.x, point.y-5, position.name, 5, true);
   char number[4] = {0};
   distance_to_text(position.distance, number, sizeof(number));
   oled_write_text(point.x, point.y-11, number, 5, true);
 }
 
+bool within_frame = false;
+
 static void process_all_points(struct Head_Track_T head, struct Position_Data_T positions[], uint32_t size, bool adjust_roll)
 {
   uint32_t i = 0;
+
+  within_frame = cordinates_within_frame(head, positions[0].azimuth, positions[0].pitch);
 
   for (i = 0; i < size; i++) {
     if(positions[i].name[0] != '\0' && cordinates_within_frame(head, positions[i].azimuth, positions[i].pitch)) {
