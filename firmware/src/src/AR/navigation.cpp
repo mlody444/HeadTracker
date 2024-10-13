@@ -125,7 +125,7 @@ static float calculate_pitch(uint32_t distance, int32_t alt_diff)
         return 0.0;
     }
 
-    return ((tan((float)alt_diff / (float)distance)) * RAD_TO_DEG);
+    return ((atan((float)alt_diff / (float)distance)) * RAD_TO_DEG);
 }
 
 static void update_point(uint32_t point)
@@ -160,7 +160,12 @@ static void update_point(uint32_t point)
 
     distance = (uint32_t)(calculate_distance(lat1, lon1, lat2, lon2) * EARTH_R);
     azimuth = calculate_azimuth(lat1, lon1, lat2, lon2) * RAD_TO_DEG;
-    pitch = calculate_pitch(distance, alt_diff);
+
+    if(self_pos.alt == 0) {
+        pitch = 0.0;
+    } else {
+        pitch = calculate_pitch(distance, alt_diff);
+    }
 
     position_add_point(nav_points_v2[point].name,
                        strlen(nav_points_v2[point].name),

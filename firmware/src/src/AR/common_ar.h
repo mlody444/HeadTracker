@@ -6,7 +6,7 @@
 #define NAME_MAX 16
 #define DIGITS   100000.0
 
-#define DEB
+// #define DEB
 #define ERR
 #define WAR
 

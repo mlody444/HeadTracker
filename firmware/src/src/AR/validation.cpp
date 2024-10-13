@@ -57,7 +57,7 @@ static void test_process(navi_data_v3_raw_s incoming_friendly)
     navigation_add_point_v2(&processed_friendly);
 }
 
-NAV_CORDS_RAW myself = {4983220, 2404215, 260};
+NAV_CORDS_RAW myself_test = {4983220, 2404215, 260};
 
 void validation_Thread()
 {
@@ -67,7 +67,7 @@ void validation_Thread()
     test_process(Post);
 
     while (1) {
-        navigation_update_myself(myself);
+        navigation_update_myself(myself_test);
 
         Stadion.lat = 4981934;
         Stadion.lon = 2404813;
