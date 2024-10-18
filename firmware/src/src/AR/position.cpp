@@ -34,7 +34,7 @@
 
 #define POINTS_MAX 32
 
-#define POS_TOL 40 // TBD - it's probably to high value
+#define POS_TOL 40.0 // TBD - it's probably to high value
 #define FOV_CALIBRATION 5.0
 
 #define ROLL_ADJUST 1
@@ -47,6 +47,10 @@
 #define COMPASS_PITCH_LONG    COMPASS_PITCH + 4.0
 #define COMPASS_LETTER_LARGE  5
 #define COMPASS_LETTER_SMALL  3
+
+#define DEBUG_POINTS 10
+
+#define DEBUG_PITCH -30.0
 
 struct Compass_Data_T {
   float azimuth;
@@ -111,9 +115,11 @@ static uint32_t search_for_id(uint16_t id);
 
 static bool cordinates_within_frame(struct Head_Track_T head, float azimuth, float pitch)
 {
-  float difference;
+  float difference = POS_TOL / 2;
 
-  if (azimuth > head.azimuth) {
+  if (azimuth == INFINITY) {
+    //nothing to do, ignoring azimuth
+  }else if (azimuth > head.azimuth) {
     difference = azimuth - head.azimuth;
   } else {
     difference = head.azimuth - azimuth;
@@ -295,7 +301,7 @@ static void process_compass(struct Head_Track_T head, struct Compass_Data_T comp
       if (compass_array[i].text[0] != 0) {
         point_compass = calculate_cordinates(head, compass_array[i].azimuth, COMPASS_PITCH, adjust_roll);
       }
-      point_start   = calculate_cordinates(head, compass_array[i].azimuth, COMPASS_PITCH_ZERO, adjust_roll);
+      point_start = calculate_cordinates(head, compass_array[i].azimuth, COMPASS_PITCH_ZERO, adjust_roll);
 
       if (compass_array[i].font_size == 14) {
         point_end = calculate_cordinates(head, compass_array[i].azimuth, COMPASS_PITCH_LONG, adjust_roll);
@@ -305,6 +311,44 @@ static void process_compass(struct Head_Track_T head, struct Compass_Data_T comp
       oled_write_line(point_start.x, point_start.y, point_end.x, point_end.y, Solid);
 
       oled_write_text(point_start.x, point_start.y - 1,compass_array[i].text, compass_array[i].font_size, true);
+    }
+  }
+}
+
+#include <stdio.h>
+
+static void process_debug_text(int16_t y, uint8_t element)
+{
+  if (element >= DEBUG_POINTS) {
+    return;
+  }
+
+  char name[5] = {0};
+  memcpy(name, positions_memory[element].name, 4);
+  char text[48] = {0};
+
+  if (positions_memory[element].name[0] == '\0') {
+    /* [0] EMPTY */
+    snprintf(text, sizeof(text), "[%d] EMPTY", element);
+  } else {
+    /* [0] name azim=xxx pit=xx dist=xxx */
+    snprintf(text, sizeof(text), "[%d]%s a=%d p=%d d=%d", element,
+                                                          name,
+                                                          (int16_t)positions_memory[element].azimuth,
+                                                          (int16_t)positions_memory[element].pitch,
+                                                          positions_memory[element].distance < 1000 ? positions_memory[element].distance : 999);
+  }
+  oled_write_text(3, y, text, 5, false);
+}
+
+static void process_debug(struct Head_Track_T head)
+{
+  struct Point_T debug_point;
+
+  for (uint8_t i = 0; i < DEBUG_POINTS; i++) {
+    if (cordinates_within_frame(head, INFINITY, DEBUG_PITCH)) {
+      debug_point = calculate_cordinates(head, head.azimuth, DEBUG_PITCH - 1.2 * i, false);
+      process_debug_text(debug_point.y, i);
     }
   }
 }
@@ -424,6 +468,7 @@ void position_Thread()
 
     process_all_points(head_track, positions_memory, 12, ROLL_ADJUST);
     process_compass(head_track, compass_array, COMPASS_ELEMENTS, ROLL_ADJUST);
+    process_debug(head_track);
 
     oled_write_pixel(63, 31); // middle point dot - helpfull for development
 

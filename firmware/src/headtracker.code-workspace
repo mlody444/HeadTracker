@@ -39,7 +39,10 @@
       "xstring": "cpp",
       "cmath": "cpp",
       "random": "cpp",
-      "typeinfo": "cpp"
+      "typeinfo": "cpp",
+      "compare": "cpp",
+      "cstdint": "cpp",
+      "limits": "cpp"
     },
   },
   "launch": {
