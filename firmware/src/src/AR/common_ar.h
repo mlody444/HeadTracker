@@ -78,4 +78,6 @@ typedef struct __attribute__((__packed__))  {
     bool update;
 } navi_data_v3_s;
 
+extern uint32_t myself_timestamp;
+
 #endif /* COMMON_AR_HH */
