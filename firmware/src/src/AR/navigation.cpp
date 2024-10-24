@@ -58,6 +58,7 @@ struct NAV_POINT_V2 {
 navi_data_v3_s nav_points_v2[POINTS_MAX];
 navi_data_v3_s empty_point = {"", 18000000, 9000000, 0, {ID_EMPTY, 0, 0}, 0xFF, DIAMOND};
 struct NAV_CORDS self_pos;
+uint32_t myself_timestamp;
 
 static bool self_position_available();
 static void update_all();
@@ -296,6 +297,9 @@ void navigation_update_myself(NAV_CORDS_RAW myself_raw)
     self_pos.lat = (DEG_TO_RAD * myself_raw.lat) / DIGITS;
     self_pos.lon = (DEG_TO_RAD * myself_raw.lon) / DIGITS;
     self_pos.alt = myself_raw.alt;
+
+    myself_timestamp = k_uptime_get_32();
+    update_all();
 }
 
 void navigation_del_pos(uint16_t id)
