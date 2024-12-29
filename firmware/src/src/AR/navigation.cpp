@@ -312,6 +312,8 @@ void navigation_del_pos(uint16_t id)
         return;
     }
 
+    error("Deleting point = %d", id);
+
     i = search_for_id(id);
 
     if (i == POINTS_MAX) {
