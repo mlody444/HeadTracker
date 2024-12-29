@@ -26,11 +26,13 @@
 #include <stdint.h>
 #include <math.h>
 #include <string.h>
+#include <stdio.h>
 
 #include "common_ar.h"
 #include "position.h"
 #include "log.h"
 #include "oled.h"
+#include "analog.h"
 
 #define POINTS_MAX 32
 
@@ -51,27 +53,29 @@
 #define DEBUG_POINTS 10
 
 #define DEBUG_PITCH -30.0
+#define BAT_PITCH (COMPASS_PITCH_LONG + 2)
+
 
 struct Compass_Data_T {
-  float azimuth;
-  uint8_t font_size;
-  char text[4];
+    float azimuth;
+    uint8_t font_size;
+    char text[4];
 };
 
 struct Head_Track_T {
-  float azimuth;
-  float pitch;
-  float roll;
+    float azimuth;
+    float pitch;
+    float roll;
 };
 
 struct Relative_Position_T {
-  float radius;
-  float angle;
+    float radius;
+    float angle;
 };
 
 struct Point_T {
-  int16_t x;
-  int16_t y;
+    int16_t x;
+    int16_t y;
 };
 
 struct Compass_Data_T compass_array[COMPASS_ELEMENTS] = {
@@ -106,380 +110,473 @@ struct Position_Data_T position_empty = {0.0, 0.0, 0, DIAMOND, "", {ID_EMPTY, 0,
 
 struct Head_Track_T head_track;
 
+uint8_t blinking_counter = 0;
+bool blinking;
+
+int16_t lipo[LIPO_ADC_MAX];
+uint8_t lipo_pos = 0;
+int16_t vbat = 0;
+int16_t bat_lines = 0;
+
 static bool cordinates_within_frame(struct Head_Track_T head, float azimuth, float pitch);
 static struct Point_T calculate_cordinates(struct Head_Track_T head, float azimuth, float pitch, bool adjust_roll);
 static void process_point(struct Head_Track_T head, struct Position_Data_T position, bool adjust_roll);
 static void process_all_points(struct Head_Track_T head, struct Position_Data_T positions[], uint32_t size, bool adjust_roll);
 static void process_compass(struct Head_Track_T head, struct Compass_Data_T compass_array[], uint8_t size, bool adjust_roll);
 static uint32_t search_for_id(uint16_t id);
+static void process_debug(struct Head_Track_T head);
+static void process_bat(struct Head_Track_T head);
+static void read_adc();
+static void draw_bat(uint8_t x, uint8_t y, uint8_t lines);
+static void blinking();
 
 static bool cordinates_within_frame(struct Head_Track_T head, float azimuth, float pitch)
 {
-  float difference = POS_TOL / 2;
+    float difference = POS_TOL / 2;
 
-  if (azimuth == INFINITY) {
-    //nothing to do, ignoring azimuth
-  }else if (azimuth > head.azimuth) {
-    difference = azimuth - head.azimuth;
-  } else {
-    difference = head.azimuth - azimuth;
-  }
+    if (azimuth == INFINITY) {
+        //nothing to do, ignoring azimuth
+    }else if (azimuth > head.azimuth) {
+        difference = azimuth - head.azimuth;
+    } else {
+        difference = head.azimuth - azimuth;
+    }
 
-  if (difference > POS_TOL) {   // if point is wrapping 360 => 0 - calculate real dif
-    difference = difference - (360 - POS_TOL);
-  }
+    if (difference > POS_TOL) {   // if point is wrapping 360 => 0 - calculate real dif
+        difference = difference - (360 - POS_TOL);
+    }
 
-  if (difference > POS_TOL || difference < 0) {
-    return false;
-  }
+    if (difference > POS_TOL || difference < 0) {
+        return false;
+    }
 
-  if (pitch > head.pitch) {
-    difference = pitch - head.pitch;
-  } else {
-    difference = head.pitch - pitch;
-  }
+    if (pitch > head.pitch) {
+        difference = pitch - head.pitch;
+    } else {
+        difference = head.pitch - pitch;
+    }
 
-  if (difference > POS_TOL) {
-    return false;
-  }
+    if (difference > POS_TOL) {
+        return false;
+    }
 
-  return true;
+    return true;
 }
 
 static struct Point_T calculate_cordinates(struct Head_Track_T head, float azimuth, float pitch, bool adjust_roll)
 {
-  struct Point_T point;
+    struct Point_T point;
 
-  float new_azimuth = head.azimuth - azimuth;
-  if (new_azimuth < -180) {
-    new_azimuth += 360.0;
-  } else if (new_azimuth > 180) {
-    new_azimuth -= 360.0;
-  }
-  float new_pitch = head.pitch - pitch;
+    float new_azimuth = head.azimuth - azimuth;
+    if (new_azimuth < -180) {
+        new_azimuth += 360.0;
+    } else if (new_azimuth > 180) {
+        new_azimuth -= 360.0;
+    }
+    float new_pitch = head.pitch - pitch;
 
-  if (adjust_roll){
-    float radius = sqrt(new_azimuth * new_azimuth + new_pitch * new_pitch);
-    float angle = asin(new_pitch/radius);
+    if (adjust_roll){
+        float radius = sqrt(new_azimuth * new_azimuth + new_pitch * new_pitch);
+        float angle = asin(new_pitch/radius);
 
-    if (new_azimuth < 0) {
-      angle = PI - angle;
+        if (new_azimuth < 0) {
+        angle = PI - angle;
+        }
+
+        angle -= (head.roll / 57.2957795);  // degrees to radians
+
+        new_azimuth = radius * cos(angle);
+        new_pitch = radius * sin(angle);
     }
 
-    angle -= (head.roll / 57.2957795);  // degrees to radians
+    point.x = (int16_t)(new_azimuth * FOV_CALIBRATION) + X_CENTER;
+    point.x = 127 - point.x;
+    point.y = (int16_t)(new_pitch   * FOV_CALIBRATION) + Y_CENTER;
+    point.y = 63 - point.y;
 
-    new_azimuth = radius * cos(angle);
-    new_pitch = radius * sin(angle);
-  }
-
-  point.x = (int16_t)(new_azimuth * FOV_CALIBRATION) + X_CENTER;
-  point.x = 127 - point.x;
-  point.y = (int16_t)(new_pitch   * FOV_CALIBRATION) + Y_CENTER;
-  point.y = 63 - point.y;
-
-  return point;
+    return point;
 }
 
 static void distance_to_text(uint32_t distance, char *buf, uint8_t size)
 {
-  uint32_t x;
-  if (size < 4) {
-    return;
-  }
+    uint32_t x;
+    if (size < 4) {
+        return;
+    }
 
-  if (distance >= 10000) {
-    buf[0] = '9';
-    buf[1] = '.';
-    buf[2] = '9';
-    buf[3] = 0;
-    return;
-  }
+    if (distance >= 10000) {
+        buf[0] = '9';
+        buf[1] = '.';
+        buf[2] = '9';
+        buf[3] = 0;
+        return;
+    }
 
-  if (distance >= 1000) {
-    x = distance / 1000;
-    buf[0] = x + '0';
-    buf[1] = '.';
-    distance -= x * 1000;
-    buf[2] = (distance / 100) + '0';
-    buf[3] = 0;
-    return;
-  }
+    if (distance >= 1000) {
+        x = distance / 1000;
+        buf[0] = x + '0';
+        buf[1] = '.';
+        distance -= x * 1000;
+        buf[2] = (distance / 100) + '0';
+        buf[3] = 0;
+        return;
+    }
 
-  if (distance >= 100) {
-    x = distance / 100;
-    buf[0] = x + '0';
-    distance -= x * 100;
-    x = distance / 10;
-    buf[1] = x + '0';
-    distance -= x * 10;
-    x = distance;
-    buf[2] = x + '0';
-    buf[3] = 0;
-    return;
-  }
+    if (distance >= 100) {
+        x = distance / 100;
+        buf[0] = x + '0';
+        distance -= x * 100;
+        x = distance / 10;
+        buf[1] = x + '0';
+        distance -= x * 10;
+        x = distance;
+        buf[2] = x + '0';
+        buf[3] = 0;
+        return;
+    }
 
-  if (distance >= 10) {
-    x = distance / 10;
-    buf[0] = x + '0';
-    distance -= x * 10;
-    x = distance;
-    buf[1] = x + '0';
-    buf[2] = 0;
-    return;
-  }
+    if (distance >= 10) {
+        x = distance / 10;
+        buf[0] = x + '0';
+        distance -= x * 10;
+        x = distance;
+        buf[1] = x + '0';
+        buf[2] = 0;
+        return;
+    }
 
-  if (distance >= 1) {
-    buf[0] = distance + '0';
-    buf[1] = 0;
-    return;
-  }
+    if (distance >= 1) {
+        buf[0] = distance + '0';
+        buf[1] = 0;
+        return;
+    }
 }
 
 static void process_point(struct Head_Track_T head, struct Position_Data_T position, bool adjust_roll)
 {
-  struct Point_T point = calculate_cordinates(head, position.azimuth, position.pitch, adjust_roll);
+    struct Point_T point = calculate_cordinates(head, position.azimuth, position.pitch, adjust_roll);
 
-  switch(position.point_type) {
-  case DIAMOND:
-    oled_draw_diamond(point.x, point.y, false);
-    break;
-  case DIAMOND_C:
-    oled_draw_diamond(point.x, point.y, true);
-    break;
-  case SQUARE:
-    oled_draw_square(point.x, point.y, false);
-    break;
-  case SQUARE_C:
-    oled_draw_square(point.x, point.y, true);
-    break;
-  case TRIANGLE:
-    oled_draw_triangle(point.x, point.y, false);
-    break;
-  case TRIANGLE_C:
-    oled_draw_triangle(point.x, point.y, true);
-    break;
-  case X_SHAPE:
-    oled_draw_x_shape(point.x, point.y, false);
-    break;
-  case X_SHAPE_C:
-    oled_draw_x_shape(point.x, point.y, true);
-    break;
-  case CIRCLE:
-    oled_draw_circle(point.x, point.y);
-    break;
-  default:
-    oled_draw_square(point.x, point.y, false);
-    oled_draw_x_shape(point.x, point.y, false);
-    break;
-  }
-  oled_write_text(point.x, point.y-5, position.name, 5, true);
-  char number[4] = {0};
-  distance_to_text(position.distance, number, sizeof(number));
-  oled_write_text(point.x, point.y-11, number, 5, true);
+    switch(position.point_type) {
+    case DIAMOND:
+        oled_draw_diamond(point.x, point.y, false);
+        break;
+    case DIAMOND_C:
+        oled_draw_diamond(point.x, point.y, true);
+        break;
+    case SQUARE:
+        oled_draw_square(point.x, point.y, false);
+        break;
+    case SQUARE_C:
+        oled_draw_square(point.x, point.y, true);
+        break;
+    case TRIANGLE:
+        oled_draw_triangle(point.x, point.y, false);
+        break;
+    case TRIANGLE_C:
+        oled_draw_triangle(point.x, point.y, true);
+        break;
+    case X_SHAPE:
+        oled_draw_x_shape(point.x, point.y, false);
+        break;
+    case X_SHAPE_C:
+        oled_draw_x_shape(point.x, point.y, true);
+        break;
+    case CIRCLE:
+        oled_draw_circle(point.x, point.y);
+        break;
+    default:
+        oled_draw_square(point.x, point.y, false);
+        oled_draw_x_shape(point.x, point.y, false);
+        break;
+    }
+    oled_write_text(point.x, point.y-5, position.name, 5, true);
+    char number[4] = {0};
+    distance_to_text(position.distance, number, sizeof(number));
+    oled_write_text(point.x, point.y-11, number, 5, true);
 }
 
 static void process_all_points(struct Head_Track_T head, struct Position_Data_T positions[], uint32_t size, bool adjust_roll)
 {
-  uint32_t i = 0;
+    uint32_t i = 0;
 
-  for (i = 0; i < size; i++) {
-    if(positions[i].name[0] != '\0' && cordinates_within_frame(head, positions[i].azimuth, positions[i].pitch)) {
-      process_point(head, positions[i], adjust_roll);
+    for (i = 0; i < size; i++) {
+        if(positions[i].name[0] != '\0' && cordinates_within_frame(head, positions[i].azimuth, positions[i].pitch)) {
+        process_point(head, positions[i], adjust_roll);
+        }
     }
-  }
 }
 
 static void process_compass(struct Head_Track_T head, struct Compass_Data_T compass_array[], uint8_t size, bool adjust_roll)
 {
-  struct Point_T point_compass;
-  struct Point_T point_start;
-  struct Point_T point_end;
-  uint8_t i = 0;
+    struct Point_T point_compass;
+    struct Point_T point_start;
+    struct Point_T point_end;
+    uint8_t i = 0;
 
-  for (i = 0; i < size; i++) {
-    if (cordinates_within_frame(head, compass_array[i].azimuth, COMPASS_PITCH)) {
-      if (compass_array[i].text[0] != 0) {
-        point_compass = calculate_cordinates(head, compass_array[i].azimuth, COMPASS_PITCH, adjust_roll);
-      }
-      point_start = calculate_cordinates(head, compass_array[i].azimuth, COMPASS_PITCH_ZERO, adjust_roll);
+    for (i = 0; i < size; i++) {
+        if (cordinates_within_frame(head, compass_array[i].azimuth, COMPASS_PITCH)) {
+        if (compass_array[i].text[0] != 0) {
+            point_compass = calculate_cordinates(head, compass_array[i].azimuth, COMPASS_PITCH, adjust_roll);
+        }
+        point_start = calculate_cordinates(head, compass_array[i].azimuth, COMPASS_PITCH_ZERO, adjust_roll);
 
-      if (compass_array[i].font_size == 14) {
-        point_end = calculate_cordinates(head, compass_array[i].azimuth, COMPASS_PITCH_LONG, adjust_roll);
-      } else {
-        point_end = calculate_cordinates(head, compass_array[i].azimuth, COMPASS_PITCH_SHORT, adjust_roll);
-      }
-      oled_write_line(point_start.x, point_start.y, point_end.x, point_end.y, Solid);
+        if (compass_array[i].font_size == 14) {
+            point_end = calculate_cordinates(head, compass_array[i].azimuth, COMPASS_PITCH_LONG, adjust_roll);
+        } else {
+            point_end = calculate_cordinates(head, compass_array[i].azimuth, COMPASS_PITCH_SHORT, adjust_roll);
+        }
+        oled_write_line(point_start.x, point_start.y, point_end.x, point_end.y, Solid);
 
-      oled_write_text(point_start.x, point_start.y - 1,compass_array[i].text, compass_array[i].font_size, true);
+        oled_write_text(point_start.x, point_start.y - 1,compass_array[i].text, compass_array[i].font_size, true);
+        }
     }
-  }
 }
-
-#include <stdio.h>
 
 static void process_debug_text(int16_t y, uint8_t element)
 {
-  if (element >= DEBUG_POINTS) {
-    return;
-  }
+    if (element >= DEBUG_POINTS) {
+        return;
+    }
 
-  char name[5] = {0};
-  memcpy(name, positions_memory[element].name, 4);
-  char text[48] = {0};
+    char name[5] = {0};
+    memcpy(name, positions_memory[element].name, 4);
+    char text[48] = {0};
 
-  if (positions_memory[element].name[0] == '\0') {
-    /* [0] EMPTY */
-    snprintf(text, sizeof(text), "[%d] EMPTY", element);
-  } else {
-    /* [0] name azim=xxx pit=xx dist=xxx */
-    snprintf(text, sizeof(text), "[%d]%s a=%d p=%d d=%d", element,
-                                                          name,
-                                                          (int16_t)positions_memory[element].azimuth,
-                                                          (int16_t)positions_memory[element].pitch,
-                                                          positions_memory[element].distance < 1000 ? positions_memory[element].distance : 999);
-  }
-  oled_write_text(3, y, text, 5, false);
+    if (positions_memory[element].name[0] == '\0') {
+        /* [0] EMPTY */
+        snprintf(text, sizeof(text), "[%d] EMPTY", element);
+    } else {
+        /* [0] name azim=xxx pit=xx dist=xxx */
+        snprintf(text, sizeof(text), "[%d]%s a=%d p=%d d=%d",
+                                     element,
+                                     name,
+                                     (int16_t)positions_memory[element].azimuth,
+                                     (int16_t)positions_memory[element].pitch,
+                                     positions_memory[element].distance < 1000 ? positions_memory[element].distance : 999);
+    }
+    oled_write_text(3, y, text, 5, false);
 }
 
 static void process_debug(struct Head_Track_T head)
 {
-  struct Point_T debug_point;
-  /* printf myself age */
-  char text[48] = {0};
-  debug_point = calculate_cordinates(head, head.azimuth, DEBUG_PITCH, false);
-  snprintf(text, sizeof(text), "My self position age =%ds", (k_uptime_get_32() - myself_timestamp)/1000);
-  oled_write_text(3, debug_point.y, text, 5, false);
+    struct Point_T debug_point;
+    /* printf myself age */
+    char text[48] = {0};
+    debug_point = calculate_cordinates(head, head.azimuth, DEBUG_PITCH, false);
+    snprintf(text, sizeof(text), "My self position age =%ds", (k_uptime_get_32() - myself_timestamp)/1000);
+    oled_write_text(3, debug_point.y, text, 5, false);
 
-  /* printf positions */
-  for (uint8_t i = 0; i < DEBUG_POINTS; i++) {
-    if (cordinates_within_frame(head, INFINITY, DEBUG_PITCH)) {
-      debug_point = calculate_cordinates(head, head.azimuth, DEBUG_PITCH - 1.2 * (i + 1), false);
-      process_debug_text(debug_point.y, i);
+    /* printf positions */
+    for (uint8_t i = 0; i < DEBUG_POINTS; i++) {
+        if (cordinates_within_frame(head, INFINITY, DEBUG_PITCH)) {
+        debug_point = calculate_cordinates(head, head.azimuth, DEBUG_PITCH - 1.2 * (i + 1), false);
+        process_debug_text(debug_point.y, i);
+        }
     }
-  }
 }
+
+static void process_bat(struct Head_Track_T head)
+{
+    struct Point_T battery;
+    uint8_t level = 2;
+
+    battery = calculate_cordinates(head, head.azimuth + 5, BAT_PITCH, true);
+    if (cordinates_within_frame(head, INFINITY, BAT_PITCH)) {
+        uint8_t lines = level - 1;  // lines == 0xFF means 0 with blinking
+        draw_bat(battery.x, battery.y, lines);
+    }
+}
+
 
 static uint32_t search_for_id(uint16_t id)
 {
-  uint32_t i = 0;
-  for (i = 0; i < POINTS_MAX; i++) {
-    if (positions_memory[i].pos.id == id) {
-      return i;
+    uint32_t i = 0;
+    for (i = 0; i < POINTS_MAX; i++) {
+        if (positions_memory[i].pos.id == id) {
+        return i;
+        }
     }
-  }
 
-  return POINTS_MAX;
+    return POINTS_MAX;
+}
+
+static void read_adc()
+{
+    lipo[lipo_pos] = analogRead2(AN3);
+    lipo_pos++;
+    if (lipo_pos == SIZEOF_ARRAY(lipo)) {
+        lipo_pos = 0;
+    }
+}
+
+static void draw_bat(uint8_t x, uint8_t y, uint8_t lines)
+{
+    uint8_t i = 0;
+    if (lines == 0xFF && blinking) {
+        return;
+    }
+
+    if (lines == 0xFF) {
+        lines = 0;
+    } else if (lines > 5) {
+        lines = 5;
+    }
+    oled_write_line(x-3, y+2, x-3, y-2, Solid);
+    oled_write_line(x+3, y+2, x+3, y-2, Solid);
+    oled_write_line(x-3, y+2, x+3, y+2, Solid);
+    oled_write_line(x-3, y-2, x+3, y-2, Solid);
+    oled_write_line(x+4, y+1, x+4, y-1, Solid);
+
+    for (i = 0; i < lines; i++) {
+        oled_write_line(x-2 + i, y+1, x-2 + i, y-1, Solid);
+    }
+}
+
+static void blinking()
+{
+    blinking_counter++;
+    if (blinking_counter == 10) {
+        blinking_counter = 0;
+        blinking = !blinking;
+    }
 }
 
 void position_set_pitch(float tilt_new)
 {
-  head_track.pitch = tilt_new * -1.0;
+    head_track.pitch = tilt_new * 1.0;
 }
 void position_set_roll(float roll_new)
 {
-  head_track.roll = roll_new * -1.0;
+    head_track.roll = roll_new * 1.0;
 }
 void position_set_azimuth(float pan_new)
 {
-  pan_new += 180.0;
-  if (pan_new < 0) {
-    head_track.azimuth = -pan_new;
-  } else {
-    head_track.azimuth = 360 - pan_new;
-  }
+    pan_new += 0.0;
+    if (pan_new < 0) {
+        head_track.azimuth = -pan_new;
+    } else {
+        head_track.azimuth = 360 - pan_new;
+    }
 }
 
 void position_add_point(struct Position_Data_T point_data)
 {
-  uint32_t i = 0;
+    uint32_t i = 0;
 
-  if (point_data.name[0] == '\0') {
-    warning("Empty name - discarding");
-    return;
-  }
+    if (point_data.name[0] == '\0') {
+        warning("Empty name - discarding");
+        return;
+    }
 
-  if (point_data.pos.id == ID_EMPTY) {
-    warning("Empty ID - discarding");
-    return;
-  }
+    if (point_data.pos.id == ID_EMPTY) {
+        warning("Empty ID - discarding");
+        return;
+    }
 
-// @TODO this should be removed
-  if (point_data.azimuth == 0xffffffff || point_data.pitch == 0xffffffff ||
-      point_data.distance == 0xffffffff || point_data.distance == 0) {
-    debug("Deleting point %s", point_data.name);
-    position_del_point((uint16_t)point_data.pos.id);
-    return;
-  }
+    // @TODO this should be removed
+    if (point_data.azimuth == 0xffffffff || point_data.pitch == 0xffffffff ||
+        point_data.distance == 0xffffffff || point_data.distance == 0) {
+        debug("Deleting point %s", point_data.name);
+        position_del_point((uint16_t)point_data.pos.id);
+        return;
+    }
 
-  i = search_for_id(point_data.pos.id); // check if point already exist
-  if (i == POINTS_MAX) {
-    i = search_for_id(ID_EMPTY); // check if there is memory for new point
-  }
+    i = search_for_id(point_data.pos.id); // check if point already exist
+    if (i == POINTS_MAX) {
+        i = search_for_id(ID_EMPTY); // check if there is memory for new point
+    }
 
-  if (i < POINTS_MAX) {
-    positions_memory[i] = point_data;
-    return;
-  }
+    if (i < POINTS_MAX) {
+        positions_memory[i] = point_data;
+        return;
+    }
 
-  warning("No space in memory point \"%s\" not added", point_data.name);
+    warning("No space in memory point \"%s\" not added", point_data.name);
 }
 
 void position_add_point(char name[], uint8_t length, float azimuth, float pitch, uint32_t distance, enum Point_Type_T point_type, point_data pos)
 {
-  struct Position_Data_T point_data = {0};
-  if (length == 0 || length >= MAX_NAME_LENGTH - 1) {
-    error("Incorrect name length = %d", length);
-    return;
-  }
-  memset(point_data.name, 0, MAX_NAME_LENGTH);
-  memcpy(point_data.name, name, length);
-  point_data.distance = distance;
-  point_data.azimuth = azimuth;
-  point_data.pitch = pitch;
-  point_data.point_type = point_type;
-  point_data.pos = pos;
+    struct Position_Data_T point_data = {0};
+    if (length == 0 || length >= MAX_NAME_LENGTH - 1) {
+        error("Incorrect name length = %d", length);
+        return;
+    }
+    memset(point_data.name, 0, MAX_NAME_LENGTH);
+    memcpy(point_data.name, name, length);
+    point_data.distance = distance;
+    point_data.azimuth = azimuth;
+    point_data.pitch = pitch;
+    point_data.point_type = point_type;
+    point_data.pos = pos;
 
-  position_add_point(point_data);
+    position_add_point(point_data);
 }
 
 void position_del_point(uint16_t id)
 {
-  uint8_t i = 0;
+    uint8_t i = 0;
 
-  i = search_for_id(id);
+    i = search_for_id(id);
 
-  if (i >= POINTS_MAX) {
-    warning("There is no point with ID = %d, deleting abborted", id);
-    return;
-  }
+    if (i >= POINTS_MAX) {
+        warning("There is no point with ID = %d, deleting abborted", id);
+        return;
+    }
 
-  debug("deleting point id = %d, i = %d", id, i);
-  positions_memory[i] = position_empty;
+    debug("deleting point id = %d, i = %d", id, i);
+    positions_memory[i] = position_empty;
+}
+
+void position_set_vbat(int16_t value, uint8_t level)
+{
+    vbat = value;
+
+    switch (level)
+    {
+        case 0:
+            bat_lines = 0xFF;
+            break;
+        case 1:
+            bat_lines = 1;
+            break;
+        case 2:
+            bat_lines = 3;
+            break;
+        case 3:
+            bat_lines = 5;
+            break;
+        default:
+            bat_lines = 6;
+            break;
+    }
 }
 
 void position_Thread()
 {
 /* waiting until log functions initialize */
-  oled_init(3000);
-  LOGI("Position thread started");
+    oled_init(3000);
+    LOGI("Position thread started");
 
-  uint32_t i = 0;
+    uint32_t i = 0;
 
-  for(i = 0; i < POINTS_MAX; i++) {
-    positions_memory[i].pos.id = ID_EMPTY;
-  }
+    // for(i = 0; i < SIZEOF_ARRAY())
 
-  while (1) {
-    oled_clean();
+    for(i = 0; i < POINTS_MAX; i++) {
+        positions_memory[i].pos.id = ID_EMPTY;
+    }
 
-    process_all_points(head_track, positions_memory, 12, ROLL_ADJUST);
-    process_compass(head_track, compass_array, COMPASS_ELEMENTS, ROLL_ADJUST);
-    process_debug(head_track);
+    while (1) {
+        oled_clean();
 
-    oled_write_pixel(63, 31); // middle point dot - helpfull for development
+        process_all_points(head_track, positions_memory, 12, ROLL_ADJUST);
+        process_compass(head_track, compass_array, COMPASS_ELEMENTS, ROLL_ADJUST);
+        process_debug(head_track);
+        process_bat(head_track);
+        oled_write_pixel(63, 31); // middle point dot - helpfull for development
+        oled_update();
 
-    oled_update();
-
-    rt_sleep_ms(25);
-  }
+        read_adc();
+        blinking();
+        rt_sleep_ms(25);
+    }
 }

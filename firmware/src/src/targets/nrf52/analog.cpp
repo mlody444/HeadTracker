@@ -108,3 +108,8 @@ float analogRead(int channel)
   }
   return (float)sv / 287.0;
 }
+
+int16_t analogRead2(int channel)
+{
+  return readOneChannel(channel);
+}
