@@ -341,6 +341,8 @@ static void process_debug_text(int16_t y, uint8_t element)
   oled_write_text(3, y, text, 5, false);
 }
 
+#include "analog.h"
+
 static void process_debug(struct Head_Track_T head)
 {
   struct Point_T debug_point;
@@ -357,6 +359,11 @@ static void process_debug(struct Head_Track_T head)
       process_debug_text(debug_point.y, i);
     }
   }
+
+  float adc_test1 = analogRead(AN2);
+  LOGI("adc_test1 = %d", ((int32_t)adc_test1 * 1000));
+  float adc_test2 = analogRead(AN3);
+  LOGI("adc_test2 = %d", ((int32_t)adc_test2 * 1000));
 }
 
 static uint32_t search_for_id(uint16_t id)
@@ -373,15 +380,15 @@ static uint32_t search_for_id(uint16_t id)
 
 void position_set_pitch(float tilt_new)
 {
-  head_track.pitch = tilt_new * -1.0;
+  head_track.pitch = tilt_new * 1.0;
 }
 void position_set_roll(float roll_new)
 {
-  head_track.roll = roll_new * -1.0;
+  head_track.roll = roll_new * 1.0;
 }
 void position_set_azimuth(float pan_new)
 {
-  pan_new += 180.0;
+  pan_new += 0.0;
   if (pan_new < 0) {
     head_track.azimuth = -pan_new;
   } else {

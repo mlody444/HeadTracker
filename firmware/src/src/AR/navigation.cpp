@@ -331,10 +331,6 @@ void navigation_del_all()
     navigation_del_pos(ID_EMPTY);
 }
 
-#include "analog.h"
-
-// static const struct adc_dt_spec adc_channel = ADC_DT_SPEC_GET(DT_PATH(zephyr_user));
-
 void navigation_Thread()
 {
     uint32_t update_counter = 0;
@@ -342,10 +338,6 @@ void navigation_Thread()
     uint32_t i = 0;
 
     init_nav_points_v2();
-
-    float adc_test = analogRead(AN2);
-
-    LOGI("adc_test = %d", ((int32_t)adc_test * 1000));
 
     while (1) {
         update_counter = UPDATE_MAX;
