@@ -423,6 +423,7 @@ void oled_init(uint32_t delay)
 {
   if (oled == NULL) {
     LOGI("oled pointer is NULL");
+    return;
   } else {
     LOGI("oled pointer is OK");
   }

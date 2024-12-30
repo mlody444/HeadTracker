@@ -360,10 +360,19 @@ static void process_debug(struct Head_Track_T head)
     }
   }
 
-  float adc_test1 = analogRead(AN2);
-  LOGI("adc_test1 = %d", ((int32_t)adc_test1 * 1000));
-  float adc_test2 = analogRead(AN3);
-  LOGI("adc_test2 = %d", ((int32_t)adc_test2 * 1000));
+  int16_t adc_test1 = analogRead2(AN2);
+  int16_t adc_test2 = analogRead2(AN3);
+  LOGI("1 = %d", adc_test1);
+  LOGI("2 = %d", adc_test2);
+
+  int32_t adc_test = (((int32_t)adc_test2) * 2000) / 283;
+
+  memset(text, 0, sizeof(text));
+  snprintf(text, sizeof(text), "ADC 1 = %d", adc_test1);
+  oled_write_text(50, 55, text, 5, false);
+  memset(text, 0, sizeof(text));
+  snprintf(text, sizeof(text), "ADC 2 = %d", adc_test);
+  oled_write_text(50, 60, text, 5, false);
 }
 
 static uint32_t search_for_id(uint16_t id)
