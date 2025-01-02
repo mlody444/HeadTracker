@@ -27,6 +27,7 @@
 //     - The string descrition for AN0 would be StrPins[IO_AN0]
 
 #define PIN_X \
+  PIN(D2,           NRFPIN(1, 11), "Gen Purpose IO") \
   PIN(AN0,          NRFPIN(0,  3), "Analog Battery Voltage") \
   PIN(AN1,          NRFPIN(0, 29), "Analog 1 (AIN_5)") \
   PIN(AN2,          NRFPIN(0,  2), "Analog 2 (AIN_0)") \

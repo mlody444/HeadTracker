@@ -303,5 +303,8 @@ void io_init()
 
   setLEDFlag(LED_GYROCAL);
 
+  pinMode(IO_D2, GPIO_OUTPUT);
+  digitalWrite(IO_D2, 0);
+
   k_poll_signal_raise(&ioThreadRunSignal, 1);
 }

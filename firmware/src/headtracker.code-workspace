@@ -42,7 +42,8 @@
       "typeinfo": "cpp",
       "compare": "cpp",
       "cstdint": "cpp",
-      "limits": "cpp"
+      "limits": "cpp",
+      "init.h": "c"
     },
   },
   "launch": {
