@@ -52,6 +52,7 @@ const int16_t HEIGHT = 64;       ///< This is the 'raw' oled height - never chan
 
 static const struct device *oled = DEVICE_DT_GET(DT_NODELABEL(ssd1306));
 uint16_t color = 1;
+bool oled_enabled = true;
 
 const struct display_buffer_descriptor buf_desc = {
     .buf_size = 128 * 64,
@@ -383,6 +384,10 @@ void oled_draw_circle(int16_t x0, int16_t y0)
 
 void oled_update()
 {
+  if(!oled_enabled) {
+    return;
+  }
+
   display_write(oled, 0, 0, &buf_desc, oled_buf);
 }
 
@@ -391,6 +396,27 @@ void oled_clean()
   for(uint16_t i = 0; i < 1024; i++) {
     oled_buf[i] = 0;
   }
+}
+
+void oled_set_contrast(uint8_t contrast)
+{
+  if (display_set_contrast(oled, contrast) != 0) {
+    LOGI("could not set oled contrast");
+  } else {
+    LOGI("Contrast set");
+  }
+}
+
+void oled_enable()
+{
+  oled_enabled = true;
+}
+
+void oled_disable()
+{
+  oled_clean();
+  oled_update();
+  oled_enabled = false;
 }
 
 void oled_init(uint32_t delay)
@@ -414,7 +440,7 @@ void oled_init(uint32_t delay)
     LOGI("Written to oled");
   }
 
-  if (display_set_contrast(oled, 128) != 0) {
+  if (display_set_contrast(oled, 255) != 0) {
     LOGI("could not set oled contrast");
   } else {
     LOGI("Contrast set");
@@ -427,6 +453,6 @@ void oled_init(uint32_t delay)
   oled_write_line(127,0,127,63, Solid);
   oled_write_line(0,63,127,63, Solid);
 
-  display_write(oled, 0, 0, &buf_desc, oled_buf);
+  oled_update();
   rt_sleep_ms(delay);
 }

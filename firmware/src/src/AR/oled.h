@@ -27,5 +27,8 @@ void oled_draw_x_shape(int16_t x, int16_t y, bool cropped);
 void oled_draw_circle(int16_t x0, int16_t y0);
 void oled_update();
 void oled_clean();
+void oled_set_contrast(uint8_t contrast);
+void oled_enable();
+void oled_disable();
 
 #endif /* OLED_HH */
