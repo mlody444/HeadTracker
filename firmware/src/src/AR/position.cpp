@@ -127,7 +127,8 @@ static uint32_t search_for_id(uint16_t id);
 static void process_debug(struct Head_Track_T head);
 static void process_bat(struct Head_Track_T head);
 static void read_adc();
-void static draw_bat(uint8_t x, uint8_t y, uint8_t lines);
+static void draw_bat(uint8_t x, uint8_t y, uint8_t lines);
+static void blinking();
 
 static bool cordinates_within_frame(struct Head_Track_T head, float azimuth, float pitch)
 {
@@ -408,7 +409,7 @@ static void read_adc()
     }
 }
 
-void static draw_bat(uint8_t x, uint8_t y, uint8_t lines)
+static void draw_bat(uint8_t x, uint8_t y, uint8_t lines)
 {
     uint8_t i = 0;
     if (lines == 0xFF && blinking) {
@@ -428,6 +429,15 @@ void static draw_bat(uint8_t x, uint8_t y, uint8_t lines)
 
     for (i = 0; i < lines; i++) {
         oled_write_line(x-2 + i, y+1, x-2 + i, y-1, Solid);
+    }
+}
+
+static void blinking()
+{
+    blinking_counter++;
+    if (blinking_counter == 10) {
+        blinking_counter = 0;
+        blinking = !blinking;
     }
 }
 
@@ -565,19 +575,8 @@ void position_Thread()
         oled_write_pixel(63, 31); // middle point dot - helpfull for development
         oled_update();
 
-        // draw_bat(60, 05, 0); oled_write_text(66, 8, "3", sizeof("3"), false); oled_write_text(73, 8, "3V", sizeof("8VU"), false); oled_write_pixel(71, 03);
-        // draw_bat(60, 15, 1);
-        // draw_bat(60, 25, 2);
-        // draw_bat(60, 35, 3);
-        // draw_bat(60, 45, 4);
-        // draw_bat(60, 55, 5); oled_write_text(66, 58, "4", sizeof("4"), false); oled_write_text(73, 58, "1V", sizeof("1VU"), false); oled_write_pixel(71, 53);
-
         read_adc();
-        blinking_counter++;
-        if (blinking_counter == 10) {
-            blinking_counter = 0;
-            blinking = !blinking;
-        }
+        blinking();
         rt_sleep_ms(25);
     }
 }

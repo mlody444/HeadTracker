@@ -249,13 +249,43 @@ static int sort(int16_t *arg1, int16_t* arg2)
     return 0;
 }
 
+// 3 full > 3.9V
+// 2 medium > 3.6V
+// 1 low > 3.3V
+// 0 critical < 3.3V (HW power off soon)
+static uint8_t set_level(int16_t adc)
+{
+    uint8_t level;
+
+    if (adc > 3900) {
+        level = 3;
+    } else if (adc > 3600) {
+        level = 2;
+    } else if (adc > 3300) {
+        level = 1;
+    } else {
+        level = 0;
+    }
+
+    return level;
+}
+
 static uint8_t process_battery(int16_t bat_adc)
 {
-    uint8_t level_temp;
-    // full > 3.9V
-    // medium > 3.6V
-    // low > 3.3V
-    // critical < 3.3V (HW power off soon)
+    uint8_t level_temp = set_level(bat_adc);
+
+    // process +/- 25mV histeresis
+    if (level_temp > bat_level) {
+        bat_adc -= 25;
+        level_temp = set_level(bat_adc);
+    } else if (level_temp < bat_level) {
+        bat_adc += 25;
+        level_temp = set_level(bat_adc);
+    }
+
+    bat_level = level_temp;
+
+    return bat_level;
 }
 
 void navigation_add_point_v2(navi_data_v3_s *point)
@@ -396,6 +426,8 @@ void navigation_Thread()
         }
 
         int16_t vbat = get_vbat();
+        uint8_t level = process_battery(vbat);
+        position_set_vbat(vbat, level);
 
         rt_sleep_ms(100);
     }
