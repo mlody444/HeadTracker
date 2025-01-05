@@ -426,9 +426,10 @@ void navigation_Thread()
         }
 
         int16_t vbat = get_vbat();
+        LOGI("vBat = %d", vbat);
         uint8_t level = process_battery(vbat);
         position_set_vbat(vbat, level);
 
-        rt_sleep_ms(100);
+        rt_sleep_ms(1000);
     }
 }

@@ -30,5 +30,6 @@ void oled_clean();
 void oled_set_contrast(uint8_t contrast);
 void oled_enable();
 void oled_disable();
+void oled_set_calibration_screen();
 
 #endif /* OLED_HH */

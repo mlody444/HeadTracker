@@ -420,6 +420,16 @@ void oled_disable()
   oled_enabled = false;
 }
 
+void oled_set_calibration_screen()
+{
+  oled_write_line(0,0,127,63, Solid);
+  oled_write_line(0,63,127,0, Solid);
+  oled_write_line(0,0,127,0, Solid);
+  oled_write_line(0,0,0,63, Solid);
+  oled_write_line(127,0,127,63, Solid);
+  oled_write_line(0,63,127,63, Solid);
+}
+
 void oled_init(uint32_t delay)
 {
   if (oled == NULL) {
@@ -448,12 +458,7 @@ void oled_init(uint32_t delay)
     LOGI("Contrast set");
   }
 
-  oled_write_line(0,0,127,63, Solid);
-  oled_write_line(0,63,127,0, Solid);
-  oled_write_line(0,0,127,0, Solid);
-  oled_write_line(0,0,0,63, Solid);
-  oled_write_line(127,0,127,63, Solid);
-  oled_write_line(0,63,127,63, Solid);
+  oled_set_calibration_screen();
 
   oled_update();
   rt_sleep_ms(delay);
