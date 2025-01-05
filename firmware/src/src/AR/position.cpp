@@ -52,7 +52,9 @@
 
 #define DEBUG_POINTS 10
 
-#define DEBUG_PITCH -30.0
+#define DEBUG_PITCH_INITIAL -30.0
+#define DEBUG_PITCH(x) (DEBUG_PITCH_INITIAL - 1.2 * x)
+
 #define BAT_PITCH (COMPASS_PITCH_LONG + 2)
 
 
@@ -118,6 +120,12 @@ uint8_t lipo_pos = 0;
 int16_t vbat = 0;
 int16_t bat_lines = 0;
 
+struct Head_Track_T head_debug = {0.0, DEBUG_PITCH_INITIAL - 4.0, 0.0};
+bool debug_lock   = false;
+bool debug_enable = true;
+bool dot_enable   = false;
+bool calibration  = false;
+
 static bool cordinates_within_frame(struct Head_Track_T head, float azimuth, float pitch);
 static struct Point_T calculate_cordinates(struct Head_Track_T head, float azimuth, float pitch, bool adjust_roll);
 static void process_point(struct Head_Track_T head, struct Position_Data_T position, bool adjust_roll);
@@ -128,7 +136,7 @@ static void process_debug(struct Head_Track_T head);
 static void process_bat(struct Head_Track_T head);
 static void read_adc();
 static void draw_bat(uint8_t x, uint8_t y, uint8_t lines);
-static void blinking();
+static void process_blinking();
 
 static bool cordinates_within_frame(struct Head_Track_T head, float azimuth, float pitch)
 {
@@ -360,30 +368,49 @@ static void process_debug_text(int16_t y, uint8_t element)
 static void process_debug(struct Head_Track_T head)
 {
     struct Point_T debug_point;
+    uint8_t element = 0;
     /* printf myself age */
     char text[48] = {0};
-    debug_point = calculate_cordinates(head, head.azimuth, DEBUG_PITCH, false);
+    debug_point = calculate_cordinates(head, head.azimuth, DEBUG_PITCH(element), false);
     snprintf(text, sizeof(text), "My self position age =%ds", (k_uptime_get_32() - myself_timestamp)/1000);
     oled_write_text(3, debug_point.y, text, 5, false);
+    element++;
+
+    debug_point = calculate_cordinates(head, head.azimuth, DEBUG_PITCH(element), false);
+    snprintf(text, sizeof(text), "Vbat = %dmV", vbat);
+    oled_write_text(3, debug_point.y, text, 5, false);
+    element++;
 
     /* printf positions */
     for (uint8_t i = 0; i < DEBUG_POINTS; i++) {
-        if (cordinates_within_frame(head, INFINITY, DEBUG_PITCH)) {
-        debug_point = calculate_cordinates(head, head.azimuth, DEBUG_PITCH - 1.2 * (i + 1), false);
-        process_debug_text(debug_point.y, i);
+        if (cordinates_within_frame(head, INFINITY, DEBUG_PITCH(element))) {
+            debug_point = calculate_cordinates(head, head.azimuth, DEBUG_PITCH(element), false);
+            process_debug_text(debug_point.y, i);
         }
+        element++;
     }
 }
 
 static void process_bat(struct Head_Track_T head)
 {
     struct Point_T battery;
-    uint8_t level = 2;
+    uint8_t volts = 0;
+    uint8_t mili_volts = 0;
 
-    battery = calculate_cordinates(head, head.azimuth + 5, BAT_PITCH, true);
+    battery = calculate_cordinates(head, head.azimuth + 7, BAT_PITCH, true);
     if (cordinates_within_frame(head, INFINITY, BAT_PITCH)) {
-        uint8_t lines = level - 1;  // lines == 0xFF means 0 with blinking
-        draw_bat(battery.x, battery.y, lines);
+        volts = (uint8_t)(vbat / 1000);
+        mili_volts = (uint8_t)((vbat % 1000) / 100);
+        draw_bat(battery.x, battery.y, bat_lines);
+
+        oled_write_char(battery.x + 6,  battery.y +3, (volts + '0'),      5);
+        oled_write_char(battery.x + 13, battery.y +3, (mili_volts + '0'), 5);
+        oled_write_char(battery.x + 18, battery.y +3, 'V',                5);
+        oled_write_pixel(battery.x + 11, battery.y - 2);
+
+
+        // draw_bat(60, 55, 5); oled_write_text(66, 58, "4", sizeof("4"), false); oled_write_text(73, 58, "1V", sizeof("1VU"), false); oled_write_pixel(71, 53);
+
     }
 }
 
@@ -432,7 +459,7 @@ static void draw_bat(uint8_t x, uint8_t y, uint8_t lines)
     }
 }
 
-static void blinking()
+static void process_blinking()
 {
     blinking_counter++;
     if (blinking_counter == 10) {
@@ -551,6 +578,46 @@ void position_set_vbat(int16_t value, uint8_t level)
     }
 }
 
+void lock_debug_screen()
+{
+    debug_lock = true;
+}
+
+void unlock_debug_screen()
+{
+    debug_lock = false;
+}
+
+void enable_debug_screen()
+{
+    debug_enable = true;
+}
+
+void disable_debug_screen()
+{
+    debug_enable = false;
+}
+
+void enable_dot()
+{
+    dot_enable = true;
+}
+
+void disable_dot()
+{
+    dot_enable = false;
+}
+
+void set_calibration_screen()
+{
+    calibration = true;
+}
+
+void clear_calibration_screen()
+{
+    calibration = false;
+}
+
 void position_Thread()
 {
 /* waiting until log functions initialize */
@@ -559,8 +626,6 @@ void position_Thread()
 
     uint32_t i = 0;
 
-    // for(i = 0; i < SIZEOF_ARRAY())
-
     for(i = 0; i < POINTS_MAX; i++) {
         positions_memory[i].pos.id = ID_EMPTY;
     }
@@ -568,15 +633,27 @@ void position_Thread()
     while (1) {
         oled_clean();
 
-        process_all_points(head_track, positions_memory, 12, ROLL_ADJUST);
-        process_compass(head_track, compass_array, COMPASS_ELEMENTS, ROLL_ADJUST);
-        process_debug(head_track);
-        process_bat(head_track);
-        oled_write_pixel(63, 31); // middle point dot - helpfull for development
-        oled_update();
+        if (calibration) {
+            oled_set_calibration_screen();
+        } else if (debug_lock) {
+            process_debug(head_debug);
+        } else {
+            process_all_points(head_track, positions_memory, 12, ROLL_ADJUST);
+            process_compass(head_track, compass_array, COMPASS_ELEMENTS, ROLL_ADJUST);
+            process_bat(head_track);
 
+            if (dot_enable) {
+                oled_write_pixel(63, 31); // middle point dot - helpfull for development
+            }
+
+            if (debug_enable) {
+                process_debug(head_track);
+            }
+        }
+
+        oled_update();
         read_adc();
-        blinking();
+        process_blinking();
         rt_sleep_ms(25);
     }
 }
