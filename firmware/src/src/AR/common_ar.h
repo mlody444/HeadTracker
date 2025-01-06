@@ -6,7 +6,12 @@
 #define NAME_MAX 16
 #define DIGITS   100000.0
 
-#define LIPO_ADC_MAX 31 // max 255 => uint8_t ad counter
+#define LIPO_ADC_MEM_MAX 31 // max 255 => uint8_t ad counter
+
+#define BITSET(byte,nbit)   ((byte) |=  (1<<(nbit)))
+#define BITCLEAR(byte,nbit) ((byte) &= ~(1<<(nbit)))
+#define BITFLIP(byte,nbit)  ((byte) ^=  (1<<(nbit)))
+#define BITCHECK(byte,nbit) ((byte) &   (1<<(nbit)))
 
 // #define DEB
 #define ERR
@@ -84,7 +89,7 @@ typedef struct __attribute__((__packed__))  {
 
 extern uint32_t myself_timestamp;
 
-extern int16_t lipo[LIPO_ADC_MAX];
+extern int16_t lipo[LIPO_ADC_MEM_MAX];
 extern uint8_t lipo_pos;
 
 #endif /* COMMON_AR_HH */

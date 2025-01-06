@@ -276,7 +276,6 @@ static ssize_t write_friendly(struct bt_conn *conn, const struct bt_gatt_attr *a
 
   memcpy(&incoming_friendly, buf, len);
   raw_to_processed(&incoming_friendly, &processed_friendly);
-  LOGI("Received point, ID = %d", processed_friendly.nav.id);
   navigation_add_point_v2(&processed_friendly);
 
   return len;
@@ -299,7 +298,6 @@ static ssize_t write_friendlys(struct bt_conn *conn, const struct bt_gatt_attr *
   for (i = 0; i < len / sizeof(navi_data_v3_raw_s); i++) {
     memcpy(&incoming_friendly, buf + (i * sizeof(navi_data_v3_raw_s)), sizeof(navi_data_v3_raw_s));
     raw_to_processed(&incoming_friendly, &processed_friendly);
-    LOGI("Received points, ID = %d", processed_friendly.nav.id);
     navigation_add_point_v2(&processed_friendly);
   }
 
@@ -311,15 +309,11 @@ static ssize_t write_delete(struct bt_conn *conn, const struct bt_gatt_attr *att
   uint16_t id_delete;
   debug("Received delete length = %d", len);
 
-  error("Deleting point");
-
   if (len != 2) {
     error("Incorrect frame != 2, length = %d", len);
   }
 
   memcpy(&id_delete, buf, len);
-
-  error("Deleting point = %d", id_delete);
 
   if (id_delete & 0xF000) {
     warning("Weleting point has reserved flags %d", id_delete & 0xF000);
