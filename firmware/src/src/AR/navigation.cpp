@@ -26,11 +26,13 @@
 #include <stdint.h>
 #include <string.h>
 #include <math.h>
+#include <init.h>
 
 #include "log.h"
 #include "position.h"
 #include "navigation.h"
 #include "common_ar.h"
+#include "io.h"
 
 #define POINTS_MAX 32
 #define UPDATE_MAX 10
@@ -59,12 +61,19 @@ navi_data_v3_s nav_points_v2[POINTS_MAX];
 navi_data_v3_s empty_point = {"", 18000000, 9000000, 0, {ID_EMPTY, 0, 0}, 0xFF, DIAMOND};
 struct NAV_CORDS self_pos;
 uint32_t myself_timestamp;
+int16_t lipo_sort[LIPO_ADC_MAX];
+uint8_t bat_level = 0;
 
 static bool self_position_available();
 static void update_all();
 static void update_point(uint32_t point);
 static void del_point(uint32_t point);
 static void del_all_points();
+static uint32_t search_for_id(uint16_t id);
+static void init_nav_points_v2();
+static int16_t get_vbat();
+static int sort(int16_t *arg1, int16_t* arg2);
+static uint8_t process_battery(int16_t bat_adc);
 
 static float calculate_azimuth(float lat_self, float lon_self, float lat_point, float lon_point);
 static float calculate_distance(float lat_self, float lon_self, float lat_point, float lon_point);
@@ -220,6 +229,35 @@ static void init_nav_points_v2()
     }
 }
 
+static int16_t get_vbat()
+{
+    memcpy(lipo_sort, lipo, sizeof(lipo));
+    qsort(lipo_sort, SIZEOF_ARRAY(lipo), sizeof(lipo[0]), (int(*)(const void *, const void *)) sort);
+
+    int32_t vbat = lipo_sort[LIPO_ADC_MAX/2];
+    return (int16_t)((vbat * 2 * 1000) / 283); // vbat is divided by 2 by resistors, result in mV, 283 as calibrated value
+}
+
+static int sort(int16_t *arg1, int16_t* arg2)
+{
+    if(*arg1 < *arg2 )
+         return - 1;
+
+    if(*arg1 > *arg2 )
+         return 1;
+
+    return 0;
+}
+
+static uint8_t process_battery(int16_t bat_adc)
+{
+    uint8_t level_temp;
+    // full > 3.9V
+    // medium > 3.6V
+    // low > 3.3V
+    // critical < 3.3V (HW power off soon)
+}
+
 void navigation_add_point_v2(navi_data_v3_s *point)
 {
     uint16_t i = 0;
@@ -356,6 +394,8 @@ void navigation_Thread()
                 pos = 0;
             }
         }
+
+        int16_t vbat = get_vbat();
 
         rt_sleep_ms(100);
     }
