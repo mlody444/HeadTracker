@@ -43,7 +43,7 @@
 #define DEL_LAT 18000000
 #define DEL_LON 9000000
 
-#define LIPO_MEM_MAX 4
+#define LIPO_MEM_MAX 8      // value cannot exceed 32
 #define LIPO_CHARGE  4000   // starting charging below 4V
 #define LIPO_CUT_OFF 4150   // stop charging above 4.15V
 
@@ -69,6 +69,7 @@ int16_t lipo_sort[LIPO_ADC_MAX];
 uint8_t bat_level = 0;
 int16_t vbat_mem[LIPO_MEM_MAX] = {0xFF};
 uint8_t vbat_pos = 0;
+bool charging = false;
 
 static bool self_position_available();
 static void update_all();
@@ -298,6 +299,10 @@ static uint8_t process_bat_lvl(int16_t bat_adc)
 
 static void process_charging(int16_t vbat)
 {
+    uint32_t cut_off = 0;
+    uint32_t charge = 0;
+    uint8_t i = 0;
+
     vbat_mem[vbat_pos] = vbat;
     vbat_pos++;
     if(vbat_pos == LIPO_MEM_MAX) {
@@ -309,7 +314,31 @@ static void process_charging(int16_t vbat)
         return;
     }
 
+    for (i = 0; i < LIPO_MEM_MAX; i++) {
+        if (vbat_mem[i] > LIPO_CUT_OFF) {
+            BITSET(cut_off, i);
+        }
 
+        if (vbat_mem[i] < LIPO_CHARGE) {
+            BITSET(charge, i);
+        }
+    }
+    cut_off = ~cut_off;
+    charge = ~charge;
+
+    if (cut_off == 0 && charge == 0) {
+        error("Can not cut off & charge at the same time");
+    }
+
+    if (cut_off == 0 && charging == true) {
+        digitalWrite(IO_D2, 0);
+        charging = false;
+    }
+
+    if (charge == 0 && charging == false) {
+        digitalWrite(IO_D2, 1);
+        charging = true;
+    }
 }
 
 static void process_vbat()

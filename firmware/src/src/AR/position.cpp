@@ -365,6 +365,8 @@ static void process_debug_text(int16_t y, uint8_t element)
     oled_write_text(3, y, text, 5, false);
 }
 
+extern bool charging;
+
 static void process_debug(struct Head_Track_T head)
 {
     struct Point_T debug_point;
@@ -379,6 +381,14 @@ static void process_debug(struct Head_Track_T head)
     debug_point = calculate_cordinates(head, head.azimuth, DEBUG_PITCH(element), false);
     snprintf(text, sizeof(text), "Vbat = %dmV", vbat);
     oled_write_text(3, debug_point.y, text, 5, false);
+    element++;
+
+    debug_point = calculate_cordinates(head, head.azimuth, DEBUG_PITCH(element), false);
+    if (charging) {
+        oled_write_text(3, debug_point.y, "Charging: ON", 5, false);
+    } else {
+        oled_write_text(3, debug_point.y, "Charging: OFF", 5, false);
+    }
     element++;
 
     /* printf positions */
@@ -407,6 +417,16 @@ static void process_bat(struct Head_Track_T head)
         oled_write_char(battery.x + 13, battery.y +3, (mili_volts + '0'), 5);
         oled_write_char(battery.x + 18, battery.y +3, 'V',                5);
         oled_write_pixel(battery.x + 11, battery.y - 2);
+
+        oled_write_line(battery.x - 6, battery.y + 2, battery.x - 7, battery.y + 1, Solid);
+        oled_write_line(battery.x - 7, battery.y    , battery.x - 5, battery.y    , Solid);
+        oled_write_line(battery.x - 5, battery.y - 1, battery.x - 6, battery.y - 2, Solid);
+        oled_write_line(battery.x - 6, battery.y + 1, battery.x - 6, battery.y - 1, Solid);
+
+
+        // oled_write_line(62, 35, 61,34, Solid);
+        // oled_write_line(61, 33, 63,33, Solid);
+        // oled_write_line(63, 32, 62,31, Solid);
 
 
         // draw_bat(60, 55, 5); oled_write_text(66, 58, "4", sizeof("4"), false); oled_write_text(73, 58, "1V", sizeof("1VU"), false); oled_write_pixel(71, 53);

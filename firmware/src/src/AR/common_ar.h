@@ -8,6 +8,11 @@
 
 #define LIPO_ADC_MAX 31 // max 255 => uint8_t ad counter
 
+#define BITSET(byte,nbit)   ((byte) |=  (1<<(nbit)))
+#define BITCLEAR(byte,nbit) ((byte) &= ~(1<<(nbit)))
+#define BITFLIP(byte,nbit)  ((byte) ^=  (1<<(nbit)))
+#define BITCHECK(byte,nbit) ((byte) &   (1<<(nbit)))
+
 // #define DEB
 #define ERR
 #define WAR
