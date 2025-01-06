@@ -43,6 +43,10 @@
 #define DEL_LAT 18000000
 #define DEL_LON 9000000
 
+#define LIPO_MEM_MAX 4
+#define LIPO_CHARGE  4000   // starting charging below 4V
+#define LIPO_CUT_OFF 4150   // stop charging above 4.15V
+
 struct NAV_POINT {
     char name[NAME_MAX];
     struct NAV_CORDS cords;
@@ -63,6 +67,8 @@ struct NAV_CORDS self_pos;
 uint32_t myself_timestamp;
 int16_t lipo_sort[LIPO_ADC_MAX];
 uint8_t bat_level = 0;
+int16_t vbat_mem[LIPO_MEM_MAX] = {0xFF};
+uint8_t vbat_pos = 0;
 
 static bool self_position_available();
 static void update_all();
@@ -73,7 +79,9 @@ static uint32_t search_for_id(uint16_t id);
 static void init_nav_points_v2();
 static int16_t get_vbat();
 static int sort(int16_t *arg1, int16_t* arg2);
-static uint8_t process_battery(int16_t bat_adc);
+static uint8_t process_bat_lvl(int16_t bat_adc);
+static void process_charging(int16_t vbat);
+static void process_vbat();
 
 static float calculate_azimuth(float lat_self, float lon_self, float lat_point, float lon_point);
 static float calculate_distance(float lat_self, float lon_self, float lat_point, float lon_point);
@@ -270,7 +278,7 @@ static uint8_t set_level(int16_t adc)
     return level;
 }
 
-static uint8_t process_battery(int16_t bat_adc)
+static uint8_t process_bat_lvl(int16_t bat_adc)
 {
     uint8_t level_temp = set_level(bat_adc);
 
@@ -286,6 +294,31 @@ static uint8_t process_battery(int16_t bat_adc)
     bat_level = level_temp;
 
     return bat_level;
+}
+
+static void process_charging(int16_t vbat)
+{
+    vbat_mem[vbat_pos] = vbat;
+    vbat_pos++;
+    if(vbat_pos == LIPO_MEM_MAX) {
+        vbat_pos = 0;
+    }
+
+    if (vbat_mem[LIPO_MEM_MAX - 1] == 0xFF) {
+        // not fully initialized
+        return;
+    }
+
+
+}
+
+static void process_vbat()
+{
+    int16_t vbat = get_vbat();
+    uint8_t level = process_bat_lvl(vbat);
+    position_set_vbat(vbat, level);
+
+    process_charging(vbat);
 }
 
 void navigation_add_point_v2(navi_data_v3_s *point)
@@ -424,11 +457,7 @@ void navigation_Thread()
                 pos = 0;
             }
         }
-
-        int16_t vbat = get_vbat();
-        LOGI("vBat = %d", vbat);
-        uint8_t level = process_battery(vbat);
-        position_set_vbat(vbat, level);
+        process_vbat();
 
         rt_sleep_ms(1000);
     }
