@@ -34,7 +34,7 @@
 
 #define POINTS_MAX 32
 
-#define POS_TOL 40.0 // TBD - it's probably to high value
+#define POS_TOL 31.0
 #define FOV_CALIBRATION 5.0
 
 #define ROLL_ADJUST 1
@@ -51,6 +51,15 @@
 #define DEBUG_POINTS 10
 
 #define DEBUG_PITCH -30.0
+#define ARROW_HOR_MID (2.55 * FOV_CALIBRATION)
+#define ARROW_VER_MID (ARROW_HOR_MID / 2)
+
+#define ARROW_MARGIN  (0.35 * FOV_CALIBRATION)
+
+#define ARROW_HOR_OUT (ARROW_HOR_MID + ARROW_MARGIN)
+#define ARROW_VER_OUT (ARROW_VER_MID + ARROW_MARGIN)
+#define ARROW_HOR_IN  (ARROW_HOR_MID - ARROW_MARGIN)
+#define ARROW_VER_IN  (ARROW_VER_MID - ARROW_MARGIN)
 
 struct Compass_Data_T {
   float azimuth;
@@ -106,6 +115,13 @@ struct Position_Data_T position_empty = {0.0, 0.0, 0, DIAMOND, "", {ID_EMPTY, 0,
 
 struct Head_Track_T head_track;
 
+enum Poin_Side_T {
+    Left_Side = 0,
+    Right_Side,
+    Center,
+};
+
+bool arrows_test  = true;
 static bool cordinates_within_frame(struct Head_Track_T head, float azimuth, float pitch);
 static struct Point_T calculate_cordinates(struct Head_Track_T head, float azimuth, float pitch, bool adjust_roll);
 static void process_point(struct Head_Track_T head, struct Position_Data_T position, bool adjust_roll);
@@ -133,7 +149,9 @@ static bool cordinates_within_frame(struct Head_Track_T head, float azimuth, flo
     return false;
   }
 
-  if (pitch > head.pitch) {
+    if (azimuth == INFINITY) {
+        //nothing to do, ignoring azimuth
+    } else if (pitch > head.pitch) {
     difference = pitch - head.pitch;
   } else {
     difference = head.pitch - pitch;
@@ -278,13 +296,55 @@ static void process_point(struct Head_Track_T head, struct Position_Data_T posit
   oled_write_text(point.x, point.y-11, number, 5, true);
 }
 
+static Poin_Side_T calculate_point_side(struct Head_Track_T head, float azimuth, float diff_min)
+{
+    float diff = head.azimuth - azimuth;
+
+    if (diff > 180.0) {
+        diff -= 360.0;
+    } else if (diff < -180.0) {
+        diff += 360.0;
+    }
+
+    if (abs(diff) < diff_min) {
+        return Center;
+    }
+
+    if (diff > 0) {
+        return Left_Side;
+    }
+
+    return Right_Side;
+}
+
 static void process_all_points(struct Head_Track_T head, struct Position_Data_T positions[], uint32_t size, bool adjust_roll)
 {
   uint32_t i = 0;
 
   for (i = 0; i < size; i++) {
-    if(positions[i].name[0] != '\0' && cordinates_within_frame(head, positions[i].azimuth, positions[i].pitch)) {
-      process_point(head, positions[i], adjust_roll);
+        if (positions[i].name[0] == '\0') {
+            continue;
+        }
+
+        if (cordinates_within_frame(head, positions[i].azimuth, positions[i].pitch)) {
+            process_point(head, positions[i], adjust_roll);
+        } else {
+            Poin_Side_T side = calculate_point_side(head, positions[i].azimuth, ARROW_HOR_MID/2);
+
+            if (side == Center) {
+                continue;
+            }
+
+            float arrow_azimuth;
+            if (side == Left_Side) {
+                arrow_azimuth = head.azimuth - ARROW_HOR_MID/2;
+            } else {
+                arrow_azimuth = head.azimuth + ARROW_HOR_MID/2;
+
+            }
+
+            struct Point_T arrow = calculate_cordinates(head, arrow_azimuth, positions[i].pitch, true);
+
     }
   }
 }
@@ -359,6 +419,62 @@ static void process_debug(struct Head_Track_T head)
   }
 }
 
+static void test_area(struct Head_Track_T head, float vertical, float horizontal)
+{
+    vertical = vertical / 2;
+    horizontal = horizontal / 2;
+    struct Point_T left_top  = calculate_cordinates(head, head.azimuth - vertical, head.pitch + horizontal, true);
+    struct Point_T left_bot  = calculate_cordinates(head, head.azimuth - vertical, head.pitch - horizontal, true);
+    struct Point_T right_top = calculate_cordinates(head, head.azimuth + vertical, head.pitch + horizontal, true);
+    struct Point_T right_bot = calculate_cordinates(head, head.azimuth + vertical, head.pitch - horizontal, true);
+
+    oled_write_line(left_top.x, left_top.y, right_top.x, right_top.y, Solid);
+    oled_write_line(right_top.x, right_top.y, right_bot.x, right_bot.y, Solid);
+    oled_write_line(right_bot.x, right_bot.y, left_bot.x, left_bot.y, Solid);
+    oled_write_line(left_bot.x, left_bot.y, left_top.x, left_top.y, Solid);
+}
+
+static void process_test_area(struct Head_Track_T head)
+{
+    // test_area(head, ARROW_HOR_IN,  ARROW_VER_IN);
+    // test_area(head, ARROW_HOR_MID, ARROW_VER_MID);
+    // test_area(head, ARROW_HOR_OUT, ARROW_VER_OUT);
+
+    test_area(head, POS_TOL, POS_TOL);
+    test_area(head, (POS_TOL) + 5.0, (POS_TOL) + 5.0);
+    test_area(head, (POS_TOL) - 5.0, (POS_TOL) - 5.0);
+
+
+    // struct Point_T left_top = calculate_cordinates(head, head.azimuth  - ARROW_HOR_MID, head.pitch + ARROW_VER_MID, true);
+    // struct Point_T left_bot = calculate_cordinates(head, head.azimuth  - ARROW_HOR_MID, head.pitch - ARROW_VER_MID, true);
+    // struct Point_T right_top = calculate_cordinates(head, head.azimuth + ARROW_HOR_MID, head.pitch + ARROW_VER_MID, true);
+    // struct Point_T right_bot = calculate_cordinates(head, head.azimuth + ARROW_HOR_MID, head.pitch - ARROW_VER_MID, true);
+
+    // oled_write_line(left_top.x, left_top.y, right_top.x, right_top.y, Solid);
+    // oled_write_line(right_top.x, right_top.y, right_bot.x, right_bot.y, Solid);
+    // oled_write_line(right_bot.x, right_bot.y, left_bot.x, left_bot.y, Solid);
+    // oled_write_line(left_bot.x, left_bot.y, left_top.x, left_top.y, Solid);
+
+    // left_top = calculate_cordinates(head, head.azimuth  - ARROW_HOR_OUT, head.pitch + ARROW_VER_OUT, true);
+    // left_bot = calculate_cordinates(head, head.azimuth  - ARROW_HOR_OUT, head.pitch - ARROW_VER_OUT, true);
+    // right_top = calculate_cordinates(head, head.azimuth + ARROW_HOR_OUT, head.pitch + ARROW_VER_OUT, true);
+    // right_bot = calculate_cordinates(head, head.azimuth + ARROW_HOR_OUT, head.pitch - ARROW_VER_OUT, true);
+
+    // oled_write_line(left_top.x, left_top.y, right_top.x, right_top.y, Solid);
+    // oled_write_line(right_top.x, right_top.y, right_bot.x, right_bot.y, Solid);
+    // oled_write_line(right_bot.x, right_bot.y, left_bot.x, left_bot.y, Solid);
+    // oled_write_line(left_bot.x, left_bot.y, left_top.x, left_top.y, Solid);
+
+    // left_top = calculate_cordinates(head, head.azimuth  - ARROW_HOR_IN, head.pitch + ARROW_VER_IN, true);
+    // left_bot = calculate_cordinates(head, head.azimuth  - ARROW_HOR_IN, head.pitch - ARROW_VER_IN, true);
+    // right_top = calculate_cordinates(head, head.azimuth + ARROW_HOR_IN, head.pitch + ARROW_VER_IN, true);
+    // right_bot = calculate_cordinates(head, head.azimuth + ARROW_HOR_IN, head.pitch - ARROW_VER_IN, true);
+
+    // oled_write_line(left_top.x, left_top.y, right_top.x, right_top.y, Solid);
+    // oled_write_line(right_top.x, right_top.y, right_bot.x, right_bot.y, Solid);
+    // oled_write_line(right_bot.x, right_bot.y, left_bot.x, left_bot.y, Solid);
+    // oled_write_line(left_bot.x, left_bot.y, left_top.x, left_top.y, Solid);
+}
 static uint32_t search_for_id(uint16_t id)
 {
   uint32_t i = 0;
@@ -472,6 +588,9 @@ void position_Thread()
   while (1) {
     oled_clean();
 
+        } else if (arrows_test) {
+            process_test_area(head_track);
+        }else {
     process_all_points(head_track, positions_memory, 12, ROLL_ADJUST);
     process_compass(head_track, compass_array, COMPASS_ELEMENTS, ROLL_ADJUST);
     process_debug(head_track);
