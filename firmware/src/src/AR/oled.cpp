@@ -308,7 +308,7 @@ void oled_write_text(int16_t x, int16_t y, char* text, uint8_t font_size, enum A
   const uint16_t *const*font;
   uint8_t width;
 
-  font = get_font_param(&font_size, &width);
+  font = get_font_param(font_size, &width);
 
   if (alignment == Center) {
     x -= (text_length * width + text_length - 1) / 2;

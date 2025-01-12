@@ -434,21 +434,21 @@ static void process_debug_text(int16_t y, uint8_t element)
 
 static void process_debug(struct Head_Track_T head)
 {
-  struct Point_T debug_point;
-  /* printf myself age */
-  char text[48] = {0};
-  debug_point = calculate_cordinates(head, head.azimuth, DEBUG_PITCH, false);
-  snprintf(text, sizeof(text), "My self position age =%ds", (k_uptime_get_32() - myself_timestamp)/1000);
-  oled_write_text(3, debug_point.y, text, 5, false);
+  // struct Point_T debug_point;
+  // /* printf myself age */
+  // char text[48] = {0};
+  // debug_point = calculate_cordinates(head, head.azimuth, DEBUG_PITCH, false);
+  // snprintf(text, sizeof(text), "My self position age =%ds", (k_uptime_get_32() - myself_timestamp)/1000);
+  // oled_write_text(3, debug_point.y, text, 5, false);
 
   /* printf positions */
-  for (uint8_t i = 0; i < DEBUG_POINTS; i++) {
-        if (cordinates_within_frame(head, INFINITY, DEBUG_PITCH(element), POS_TOL, POS_TOL)) {
-      debug_point = calculate_cordinates(head, head.azimuth, DEBUG_PITCH - 1.2 * (i + 1), false);
-      process_debug_text(debug_point.y, i);
-    }
-    if (cordinates_within_frame(head, INFINITY, BAT_PITCH, POS_TOL, POS_TOL)) {
-  }
+  // for (uint8_t i = 0; i < DEBUG_POINTS; i++) {
+  //       if (cordinates_within_frame(head, INFINITY, DEBUG_PITCH(element), POS_TOL, POS_TOL)) {
+  //     debug_point = calculate_cordinates(head, head.azimuth, DEBUG_PITCH - 1.2 * (i + 1), false);
+  //     process_debug_text(debug_point.y, i);
+  //   }
+  //   if (cordinates_within_frame(head, INFINITY, BAT_PITCH, POS_TOL, POS_TOL)) {
+  // }
 }
 
 static void test_area(struct Head_Track_T head, float vertical, float horizontal)
@@ -620,9 +620,7 @@ void position_Thread()
   while (1) {
     oled_clean();
 
-        } else if (arrows_test) {
-            process_test_area(head_track);
-        }else {
+    // process_test_area(head_track);
     process_all_points(head_track, positions_memory, 12, ROLL_ADJUST);
     process_compass(head_track, compass_array, COMPASS_ELEMENTS, ROLL_ADJUST);
     process_debug(head_track);
