@@ -303,6 +303,29 @@ void oled_write_text(int16_t x, int16_t y, char* text, uint8_t font_size, bool c
   }
 }
 
+void oled_write_text(int16_t x, int16_t y, char* text, uint8_t font_size, enum Alignment_T alignment)
+{
+  uint8_t text_length = strlen(text);
+  const uint16_t *const*font;
+  uint8_t width;
+
+  font = get_font_param(&font_size, &width);
+
+  if (alignment == Center) {
+    x -= (text_length * width + text_length - 1) / 2;
+  }
+
+  if (alignment == Right) {
+    x -= (text_length * width + text_length - 1);
+  }
+
+  while (*text != '\0') {
+    oled_write_char(x, y, *text, font_size);
+    x += 1 + width;
+    text++;
+  }
+}
+
 void oled_draw_diamond(int16_t x, int16_t y, bool cropped)
 {
   enum Line_T line_type = Solid;
