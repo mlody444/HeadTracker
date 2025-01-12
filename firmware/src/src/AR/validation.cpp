@@ -68,24 +68,25 @@ void validation_Thread()
 
     while (1) {
         navigation_update_myself(myself_test);
+        rt_sleep_ms(1000);
 
-        Stadion.lat = 4981934;
-        Stadion.lon = 2404813;
-        Stadion.alt = 289;
-        memcpy(Stadion.name, NAME_STATION_1, sizeof(NAME_STATION_1));
-        test_process(Stadion);
-        rt_sleep_ms(2000);
-        memcpy(Stadion.name, NAME_STATION_2, sizeof(NAME_STATION_2));
-        test_process(Stadion);
-        rt_sleep_ms(2000);
-        Stadion.lat = 4981700;
-        Stadion.lon = 2404913;
-        Stadion.alt = 250;
-        memcpy(Stadion.name, NAME_STATION_3, sizeof(NAME_STATION_3));
-        test_process(Stadion);
-        rt_sleep_ms(2000);
-        navigation_del_pos(Stadion.nav.id);
-        rt_sleep_ms(2000);
+        // Stadion.lat = 4981934;
+        // Stadion.lon = 2404813;
+        // Stadion.alt = 289;
+        // memcpy(Stadion.name, NAME_STATION_1, sizeof(NAME_STATION_1));
+        // test_process(Stadion);
+        // rt_sleep_ms(2000);
+        // memcpy(Stadion.name, NAME_STATION_2, sizeof(NAME_STATION_2));
+        // test_process(Stadion);
+        // rt_sleep_ms(2000);
+        // Stadion.lat = 4981700;
+        // Stadion.lon = 2404913;
+        // Stadion.alt = 250;
+        // memcpy(Stadion.name, NAME_STATION_3, sizeof(NAME_STATION_3));
+        // test_process(Stadion);
+        // rt_sleep_ms(2000);
+        // navigation_del_pos(Stadion.nav.id);
+        // rt_sleep_ms(2000);
 
     }
 }

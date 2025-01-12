@@ -118,48 +118,49 @@ struct Head_Track_T head_track;
 enum Poin_Side_T {
     Left_Side = 0,
     Right_Side,
-    Center,
+    Center_Side,
 };
 
-bool arrows_test  = true;
-static bool cordinates_within_frame(struct Head_Track_T head, float azimuth, float pitch);
+bool arrows_test  = false;
+static bool cordinates_within_frame(struct Head_Track_T head, float azimuth, float pitch, float diff_hor, float diff_ver);
 static struct Point_T calculate_cordinates(struct Head_Track_T head, float azimuth, float pitch, bool adjust_roll);
 static void process_point(struct Head_Track_T head, struct Position_Data_T position, bool adjust_roll);
+static void process_point_text(int16_t x, int16_t y, char name[], uint32_t distance, enum Alignment_T alignment);
 static void process_all_points(struct Head_Track_T head, struct Position_Data_T positions[], uint32_t size, bool adjust_roll);
 static void process_compass(struct Head_Track_T head, struct Compass_Data_T compass_array[], uint8_t size, bool adjust_roll);
 static uint32_t search_for_id(uint16_t id);
 
-static bool cordinates_within_frame(struct Head_Track_T head, float azimuth, float pitch)
+static bool cordinates_within_frame(struct Head_Track_T head, float azimuth, float pitch, float diff_hor, float diff_ver)
 {
-  float difference = POS_TOL / 2;
+    float difference;
 
-  if (azimuth == INFINITY) {
-    //nothing to do, ignoring azimuth
-  }else if (azimuth > head.azimuth) {
-    difference = azimuth - head.azimuth;
-  } else {
-    difference = head.azimuth - azimuth;
-  }
+    if (azimuth != INFINITY) { //check if azimuth shouldn't be skipped
+        if (azimuth > head.azimuth) {
+            difference = azimuth - head.azimuth;
+        } else {
+            difference = head.azimuth - azimuth;
+        }
 
-  if (difference > POS_TOL) {   // if point is wrapping 360 => 0 - calculate real dif
-    difference = difference - (360 - POS_TOL);
-  }
+        if (difference > diff_hor) {   // if point is wrapping 360 => 0 - calculate real dif
+            difference = difference - (360 - diff_hor);
+        }
 
-  if (difference > POS_TOL || difference < 0) {
-    return false;
-  }
+        if (difference > diff_hor || difference < 0) {
+            return false;
+        }
+    }
 
-    if (azimuth == INFINITY) {
-        //nothing to do, ignoring azimuth
-    } else if (pitch > head.pitch) {
-    difference = pitch - head.pitch;
-  } else {
-    difference = head.pitch - pitch;
-  }
+    if (pitch != INFINITY) { // //check if azimuth shouldn't be skipped
+        if (pitch > head.pitch) {
+            difference = pitch - head.pitch;
+        } else {
+            difference = head.pitch - pitch;
+        }
 
-  if (difference > POS_TOL) {
-    return false;
-  }
+        if (difference > POS_TOL) {
+            return false;
+        }
+    }
 
   return true;
 }
@@ -290,10 +291,20 @@ static void process_point(struct Head_Track_T head, struct Position_Data_T posit
     oled_draw_x_shape(point.x, point.y, false);
     break;
   }
-  oled_write_text(point.x, point.y-5, position.name, 5, true);
+    // oled_write_text(point.x, point.y-5, position.name, 5, true);
+    // char number[4] = {0};
+    // distance_to_text(position.distance, number, sizeof(number));
+    // oled_write_text(point.x, point.y-11, number, 5, true);
+    process_point_text(point.x, point.y-5, position.name, position.distance, Center);
+
+}
+
+static void process_point_text(int16_t x, int16_t y, char name[], uint32_t distance, enum Alignment_T alignment)
+{
+    oled_write_text(x, y, name, 5, alignment);
   char number[4] = {0};
-  distance_to_text(position.distance, number, sizeof(number));
-  oled_write_text(point.x, point.y-11, number, 5, true);
+    distance_to_text(distance, number, sizeof(number));
+    oled_write_text(x, y-6, number, 5, alignment);
 }
 
 static Poin_Side_T calculate_point_side(struct Head_Track_T head, float azimuth, float diff_min)
@@ -307,7 +318,7 @@ static Poin_Side_T calculate_point_side(struct Head_Track_T head, float azimuth,
     }
 
     if (abs(diff) < diff_min) {
-        return Center;
+        return Center_Side;
     }
 
     if (diff > 0) {
@@ -326,24 +337,44 @@ static void process_all_points(struct Head_Track_T head, struct Position_Data_T 
             continue;
         }
 
-        if (cordinates_within_frame(head, positions[i].azimuth, positions[i].pitch)) {
+        if (cordinates_within_frame(head, positions[i].azimuth, positions[i].pitch, POS_TOL, POS_TOL)) {
             process_point(head, positions[i], adjust_roll);
-        } else {
+        }
+
+        if (!cordinates_within_frame(head, positions[i].azimuth, positions[i].pitch, ARROW_HOR_OUT, ARROW_VER_MID + 3.0)) {
             Poin_Side_T side = calculate_point_side(head, positions[i].azimuth, ARROW_HOR_MID/2);
 
-            if (side == Center) {
+            if (side == Center_Side) {
                 continue;
             }
 
             float arrow_azimuth;
+            enum Alignment_T text_alignment;
+            int16_t x;
             if (side == Left_Side) {
                 arrow_azimuth = head.azimuth - ARROW_HOR_MID/2;
+                x = 127;
             } else {
                 arrow_azimuth = head.azimuth + ARROW_HOR_MID/2;
-
+                x = 0;
             }
 
+            // draw arrow
             struct Point_T arrow = calculate_cordinates(head, arrow_azimuth, positions[i].pitch, true);
+
+            if (side == Right_Side) {
+                x = 127;
+                oled_write_line(x, arrow.y, x - 2, arrow.y - 2, Solid);
+                oled_write_line(x, arrow.y, x - 2, arrow.y + 2, Solid);
+                oled_write_line(x, arrow.y, x - 4, arrow.y, Solid);
+                // oled_write_text();
+            } else {
+                x = 0;
+                oled_write_line(x, arrow.y, x + 2, arrow.y - 2, Solid);
+                oled_write_line(x, arrow.y, x + 2, arrow.y + 2, Solid);
+                oled_write_line(x, arrow.y, x + 4, arrow.y, Solid);
+            }
+
 
     }
   }
@@ -357,7 +388,7 @@ static void process_compass(struct Head_Track_T head, struct Compass_Data_T comp
   uint8_t i = 0;
 
   for (i = 0; i < size; i++) {
-    if (cordinates_within_frame(head, compass_array[i].azimuth, COMPASS_PITCH)) {
+        if (cordinates_within_frame(head, compass_array[i].azimuth, COMPASS_PITCH, POS_TOL, POS_TOL)) {
       if (compass_array[i].text[0] != 0) {
         point_compass = calculate_cordinates(head, compass_array[i].azimuth, COMPASS_PITCH, adjust_roll);
       }
@@ -412,10 +443,11 @@ static void process_debug(struct Head_Track_T head)
 
   /* printf positions */
   for (uint8_t i = 0; i < DEBUG_POINTS; i++) {
-    if (cordinates_within_frame(head, INFINITY, DEBUG_PITCH)) {
+        if (cordinates_within_frame(head, INFINITY, DEBUG_PITCH(element), POS_TOL, POS_TOL)) {
       debug_point = calculate_cordinates(head, head.azimuth, DEBUG_PITCH - 1.2 * (i + 1), false);
       process_debug_text(debug_point.y, i);
     }
+    if (cordinates_within_frame(head, INFINITY, BAT_PITCH, POS_TOL, POS_TOL)) {
   }
 }
 
