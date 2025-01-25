@@ -14,6 +14,20 @@
 #include "trackersettings.h"
 #include "log.h"
 
+#define PIN_TO_GPORT(pin) (pin / 32)
+#define PIN_TO_GPIN(pin) (pin % 32)
+
+void setPinHighDrive(uint32_t pin) {
+
+  if(PIN_TO_GPORT(PIN_NAME_TO_NUM(pin)) == 0) {
+    NRF_P0->PIN_CNF[PIN_TO_GPIN(PIN_NAME_TO_NUM(pin))] = (NRF_P0->PIN_CNF[PIN_TO_GPIN(PIN_NAME_TO_NUM(pin))] & ~GPIO_PIN_CNF_DRIVE_Msk) |
+          GPIO_PIN_CNF_DRIVE_H0H1 << GPIO_PIN_CNF_DRIVE_Pos;
+  } else {
+    NRF_P1->PIN_CNF[PIN_TO_GPIN(PIN_NAME_TO_NUM(pin))] = (NRF_P1->PIN_CNF[PIN_TO_GPIN(PIN_NAME_TO_NUM(pin))] & ~GPIO_PIN_CNF_DRIVE_Msk) |
+          GPIO_PIN_CNF_DRIVE_H0H1 << GPIO_PIN_CNF_DRIVE_Pos;
+  }
+}
+
 K_SEM_DEFINE(button_sem, 0, 1);
 K_SEM_DEFINE(lngbutton_sem, 0, 1);
 
@@ -243,8 +257,15 @@ void io_init()
 #if defined(PCB_NANO33BLE)
   pinMode(IO_VDDENA, GPIO_OUTPUT);
   pinMode(IO_I2C_PU, GPIO_OUTPUT);
-  digitalWrite(IO_VDDENA, 1);
+
+  setPinHighDrive(IO_VDDENA);
+  setPinHighDrive(IO_I2C_PU);
   digitalWrite(IO_I2C_PU, 1);
+  // Hard Reset Sensor
+  // digitalWrite(IO_VDDENA, 0);
+  // k_msleep(200);
+  digitalWrite(IO_VDDENA, 1);
+
 #endif
 
 #if defined(HAS_CENTERBTN)

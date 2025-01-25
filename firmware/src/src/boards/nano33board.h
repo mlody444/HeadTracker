@@ -15,7 +15,7 @@
   #define HAS_LSM9DS1
 #endif
 
-#define HAS_APDS9960
+// #define HAS_APDS9960
 #define HAS_3DIODE_RGB
 #define HAS_POWERLED
 #define HAS_NOTIFYLED
