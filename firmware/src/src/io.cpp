@@ -305,7 +305,7 @@ void io_init()
 
 //lipo charging
   pinMode(IO_D2, GPIO_OUTPUT);
-  digitalWrite(IO_D2, 0);   //charging disable by default
+  digitalWrite(IO_D2, 1);   //charging disable by default
 
   k_poll_signal_raise(&ioThreadRunSignal, 1);
 }
