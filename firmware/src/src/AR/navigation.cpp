@@ -67,7 +67,7 @@ struct NAV_CORDS self_pos;
 uint32_t myself_timestamp;
 int16_t lipo_sort[LIPO_ADC_MEM_MAX];
 uint8_t bat_level = 0;
-int16_t vbat_mem[LIPO_MEM_MAX] = {0xFF};
+int16_t vbat_mem[LIPO_MEM_MAX];
 uint8_t vbat_pos = 0;
 bool charging = false;
 
@@ -301,7 +301,12 @@ static void process_charging(int16_t vbat)
 {
     uint32_t cut_off = 0;
     uint32_t charge = 0;
+    uint32_t mask = 0;
     uint8_t i = 0;
+
+    if (vbat == 0) {
+        return;
+    }
 
     vbat_mem[vbat_pos] = vbat;
     vbat_pos++;
@@ -309,7 +314,17 @@ static void process_charging(int16_t vbat)
         vbat_pos = 0;
     }
 
-    if (vbat_mem[LIPO_MEM_MAX - 1] == 0xFF) {
+     LOGI("vbat_mem[0] = %d", vbat_mem[0]);
+     LOGI("vbat_mem[1] = %d", vbat_mem[1]);
+     LOGI("vbat_mem[2] = %d", vbat_mem[2]);
+     LOGI("vbat_mem[3] = %d", vbat_mem[3]);
+     LOGI("vbat_mem[4] = %d", vbat_mem[4]);
+     LOGI("vbat_mem[5] = %d", vbat_mem[5]);
+     LOGI("vbat_mem[6] = %d", vbat_mem[6]);
+     LOGI("vbat_mem[7] = %d", vbat_mem[7]);
+
+    if (vbat_mem[LIPO_MEM_MAX - 1] == 0) {
+        LOGI("CHARGING INITIALIZATON");
         // not fully initialized
         return;
     }
@@ -322,21 +337,43 @@ static void process_charging(int16_t vbat)
         if (vbat_mem[i] < LIPO_CHARGE) {
             BITSET(charge, i);
         }
+
+        BITSET(mask, i);
     }
+
+    LOGI("cut_off 0 = %d", cut_off);
+    LOGI("charge  0 = %d", charge);
     cut_off = ~cut_off;
-    charge = ~charge;
+    charge  = ~charge;
+    LOGI("cut_off 1 = %d", cut_off);
+    LOGI("charge  1 = %d", charge);
+
+    cut_off &= mask;
+    charge  &= mask;
+    LOGI("cut_off 2 = %d", cut_off);
+    LOGI("charge  2 = %d", charge);
+
+    if (charge) {
+        LOGI("CHARGING");
+    }
+
+    if (cut_off) {
+        LOGI("CUT_OFF");
+    }
 
     if (cut_off == 0 && charge == 0) {
         error("Can not cut off & charge at the same time");
     }
 
-    if (cut_off == 0 && charging == true) {
-        digitalWrite(IO_D2, 0);
+    if (cut_off == 0) { //&& charging == true) {
+        LOGI("disable charging");
+        digitalWrite(IO_D2, 0); // disable charging
         charging = false;
     }
 
-    if (charge == 0 && charging == false) {
-        digitalWrite(IO_D2, 1);
+    if (charge == 0) { //&& charging == false) {
+        LOGI("enable charging");
+        digitalWrite(IO_D2, 1); // enable charging
         charging = true;
     }
 }
@@ -488,6 +525,6 @@ void navigation_Thread()
         }
         process_vbat();
 
-        rt_sleep_ms(1000);
+        rt_sleep_ms(3000);
     }
 }
