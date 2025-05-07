@@ -6,9 +6,18 @@
 #define NAME_MAX 16
 #define DIGITS   100000.0
 
+#define LIPO_ADC_MEM_MAX 31 // max 255 => uint8_t ad counter
+
+#define BITSET(byte,nbit)   ((byte) |=  (1<<(nbit)))
+#define BITCLEAR(byte,nbit) ((byte) &= ~(1<<(nbit)))
+#define BITFLIP(byte,nbit)  ((byte) ^=  (1<<(nbit)))
+#define BITCHECK(byte,nbit) ((byte) &   (1<<(nbit)))
+
 // #define DEB
 #define ERR
 #define WAR
+
+#define SIZEOF_ARRAY(x)  (sizeof(x) / sizeof((x)[0]))
 
 #ifdef DEB
 #define debug(text, ...) LOGI("DEBUG %s %s() line:%d:\r\n" text, __FILE__, __func__, __LINE__ __VA_OPT__(,)__VA_ARGS__)
@@ -79,5 +88,8 @@ typedef struct __attribute__((__packed__))  {
 } navi_data_v3_s;
 
 extern uint32_t myself_timestamp;
+
+extern int16_t lipo[LIPO_ADC_MEM_MAX];
+extern uint8_t lipo_pos;
 
 #endif /* COMMON_AR_HH */

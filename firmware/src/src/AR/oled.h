@@ -15,7 +15,7 @@ enum Line_T {
 };
 
 void oled_write_char(int16_t x, int16_t y, char letter, uint8_t font_size);
-void oled_write_text(int16_t x, int16_t y, char* text, uint8_t text_size, bool center);
+void oled_write_text(int16_t x, int16_t y, char* text, uint8_t font_size, bool center);
 
 void oled_init(uint32_t delay);
 void oled_write_pixel(int16_t x, int16_t y);
@@ -30,5 +30,6 @@ void oled_clean();
 void oled_set_contrast(uint8_t contrast);
 void oled_enable();
 void oled_disable();
+void oled_set_calibration_screen();
 
 #endif /* OLED_HH */

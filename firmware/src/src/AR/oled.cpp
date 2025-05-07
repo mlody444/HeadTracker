@@ -196,12 +196,12 @@ void oled_write_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1, enum Line_T
   }
 }
 
-static const uint16_t *const*get_font_param(uint8_t height, uint8_t *width)
+static const uint16_t *const*get_font_param(uint8_t *height, uint8_t *width)
 {
   const uint16_t *const*test_font;
   uint8_t font_width = 0;
 
-  switch (height) {
+  switch (*height) {
   case 5:
     font_width = 4;
     test_font = pix5;
@@ -219,6 +219,7 @@ static const uint16_t *const*get_font_param(uint8_t height, uint8_t *width)
     test_font = pix14;
     break;
   default:
+    *height = 5;
     font_width = 4;
     test_font = pix5;
     break;
@@ -244,7 +245,7 @@ void oled_write_char(int16_t x, int16_t y, char letter, uint8_t font_size)
   uint8_t j = 0;
   uint8_t i = 0;
 
-  font = get_font_param(font_size, &oled_font_width);
+  font = get_font_param(&font_size, &oled_font_width);
   test_y_height = ((font_size + (8 - (y % 8))) + 7) / 8;
   x_char = font[letter - 0x20];
 
@@ -283,20 +284,20 @@ void oled_write_char(int16_t x, int16_t y, char letter, uint8_t font_size)
   }
 }
 
-void oled_write_text(int16_t x, int16_t y, char* text, uint8_t text_size, bool center)
+void oled_write_text(int16_t x, int16_t y, char* text, uint8_t font_size, bool center)
 {
   uint8_t text_length = strlen(text);
   const uint16_t *const*font;
   uint8_t width;
 
-  font = get_font_param(text_size, &width);
+  font = get_font_param(&font_size, &width);
 
   if (center) {
     x -= (text_length * width + text_length - 1) / 2;
   }
 
   while (*text != '\0') {
-    oled_write_char(x, y, *text, text_size);
+    oled_write_char(x, y, *text, font_size);
     x += 1 + width;
     text++;
   }
@@ -419,10 +420,21 @@ void oled_disable()
   oled_enabled = false;
 }
 
+void oled_set_calibration_screen()
+{
+  oled_write_line(0,0,127,63, Solid);
+  oled_write_line(0,63,127,0, Solid);
+  oled_write_line(0,0,127,0, Solid);
+  oled_write_line(0,0,0,63, Solid);
+  oled_write_line(127,0,127,63, Solid);
+  oled_write_line(0,63,127,63, Solid);
+}
+
 void oled_init(uint32_t delay)
 {
   if (oled == NULL) {
     LOGI("oled pointer is NULL");
+    return;
   } else {
     LOGI("oled pointer is OK");
   }
@@ -446,12 +458,7 @@ void oled_init(uint32_t delay)
     LOGI("Contrast set");
   }
 
-  oled_write_line(0,0,127,63, Solid);
-  oled_write_line(0,63,127,0, Solid);
-  oled_write_line(0,0,127,0, Solid);
-  oled_write_line(0,0,0,63, Solid);
-  oled_write_line(127,0,127,63, Solid);
-  oled_write_line(0,63,127,63, Solid);
+  oled_set_calibration_screen();
 
   oled_update();
   rt_sleep_ms(delay);
